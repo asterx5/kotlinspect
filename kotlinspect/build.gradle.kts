@@ -106,10 +106,13 @@ mavenPublishing {
             developer {
                 id.set("asterx5")
                 name.set("asterx5")
+                url.set("https://github.com/asterx5")
             }
         }
         scm {
             url.set("https://github.com/asterx5/kotlinspect")
+            connection.set("scm:git:git://github.com/asterx5/kotlinspect.git")
+            developerConnection.set("scm:git:ssh://git@github.com/asterx5/kotlinspect.git")
         }
     }
 }
