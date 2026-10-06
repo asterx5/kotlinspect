@@ -16,7 +16,7 @@ A network inspector for Kotlin Multiplatform apps that use Ktor. Add one depende
 dependencyResolutionManagement {
     repositories {
         mavenCentral()
-        mavenLocal() // until 1.0.0 is on Maven Central
+        mavenLocal() // only needed for local builds
     }
 }
 
@@ -24,7 +24,7 @@ dependencyResolutionManagement {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.asterx5:kotlinspect:1.0.0")
+            implementation("io.github.asterx5:kotlinspect:1.0.0-beta01")
         }
     }
 }

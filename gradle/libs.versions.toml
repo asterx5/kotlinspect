@@ -24,7 +24,7 @@ mavenPublish = "0.34.0"
 material3 = "1.12.0-alpha03"
 
 [libraries]
-kotlinspect = { module = "io.github.asterx5:kotlinspect", version = "1.0.0" }
+kotlinspect = { module = "io.github.asterx5:kotlinspect", version = "1.0.0-beta01" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 junit = { module = "junit:junit", version.ref = "junit" }
