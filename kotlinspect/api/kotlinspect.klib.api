@@ -1,0 +1,320 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <io.github.asterx5:kotlinspect>
+final enum class io.github.asterx5.kotlinspect/CallState : kotlin/Enum<io.github.asterx5.kotlinspect/CallState> { // io.github.asterx5.kotlinspect/CallState|null[0]
+    enum entry Cancelled // io.github.asterx5.kotlinspect/CallState.Cancelled|null[0]
+    enum entry Complete // io.github.asterx5.kotlinspect/CallState.Complete|null[0]
+    enum entry Failed // io.github.asterx5.kotlinspect/CallState.Failed|null[0]
+    enum entry Pending // io.github.asterx5.kotlinspect/CallState.Pending|null[0]
+
+    final val entries // io.github.asterx5.kotlinspect/CallState.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<io.github.asterx5.kotlinspect/CallState> // io.github.asterx5.kotlinspect/CallState.entries.<get-entries>|<get-entries>#static(){}[0]
+
+    final fun valueOf(kotlin/String): io.github.asterx5.kotlinspect/CallState // io.github.asterx5.kotlinspect/CallState.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<io.github.asterx5.kotlinspect/CallState> // io.github.asterx5.kotlinspect/CallState.values|values#static(){}[0]
+}
+
+abstract fun interface io.github.asterx5.kotlinspect/BodyRedactor { // io.github.asterx5.kotlinspect/BodyRedactor|null[0]
+    abstract fun redact(kotlin/String?, kotlin/String, kotlin/Boolean): kotlin/String // io.github.asterx5.kotlinspect/BodyRedactor.redact|redact(kotlin.String?;kotlin.String;kotlin.Boolean){}[0]
+}
+
+abstract fun interface io.github.asterx5.kotlinspect/HeaderRedactor { // io.github.asterx5.kotlinspect/HeaderRedactor|null[0]
+    abstract fun redact(kotlin/String, kotlin/String): kotlin/String // io.github.asterx5.kotlinspect/HeaderRedactor.redact|redact(kotlin.String;kotlin.String){}[0]
+}
+
+abstract fun interface io.github.asterx5.kotlinspect/ToastFilter { // io.github.asterx5.kotlinspect/ToastFilter|null[0]
+    abstract fun shouldShow(io.github.asterx5.kotlinspect/KotlinspectCall): kotlin/Boolean // io.github.asterx5.kotlinspect/ToastFilter.shouldShow|shouldShow(io.github.asterx5.kotlinspect.KotlinspectCall){}[0]
+
+    final object Companion { // io.github.asterx5.kotlinspect/ToastFilter.Companion|null[0]
+        final val All // io.github.asterx5.kotlinspect/ToastFilter.Companion.All|{}All[0]
+            final fun <get-All>(): io.github.asterx5.kotlinspect/ToastFilter // io.github.asterx5.kotlinspect/ToastFilter.Companion.All.<get-All>|<get-All>(){}[0]
+        final val ErrorsOnly // io.github.asterx5.kotlinspect/ToastFilter.Companion.ErrorsOnly|{}ErrorsOnly[0]
+            final fun <get-ErrorsOnly>(): io.github.asterx5.kotlinspect/ToastFilter // io.github.asterx5.kotlinspect/ToastFilter.Companion.ErrorsOnly.<get-ErrorsOnly>|<get-ErrorsOnly>(){}[0]
+    }
+}
+
+sealed interface io.github.asterx5.kotlinspect/RetentionPolicy { // io.github.asterx5.kotlinspect/RetentionPolicy|null[0]
+    final class MaxAge : io.github.asterx5.kotlinspect/RetentionPolicy { // io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge|null[0]
+        constructor <init>(kotlin.time/Duration) // io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge.<init>|<init>(kotlin.time.Duration){}[0]
+
+        final val maxAge // io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge.maxAge|{}maxAge[0]
+            final fun <get-maxAge>(): kotlin.time/Duration // io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge.maxAge.<get-maxAge>|<get-maxAge>(){}[0]
+
+        final fun component1(): kotlin.time/Duration // io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge.component1|component1(){}[0]
+        final fun copy(kotlin.time/Duration = ...): io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge // io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge.copy|copy(kotlin.time.Duration){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge.toString|toString(){}[0]
+    }
+
+    final class MaxCount : io.github.asterx5.kotlinspect/RetentionPolicy { // io.github.asterx5.kotlinspect/RetentionPolicy.MaxCount|null[0]
+        constructor <init>(kotlin/Int) // io.github.asterx5.kotlinspect/RetentionPolicy.MaxCount.<init>|<init>(kotlin.Int){}[0]
+
+        final val count // io.github.asterx5.kotlinspect/RetentionPolicy.MaxCount.count|{}count[0]
+            final fun <get-count>(): kotlin/Int // io.github.asterx5.kotlinspect/RetentionPolicy.MaxCount.count.<get-count>|<get-count>(){}[0]
+
+        final fun component1(): kotlin/Int // io.github.asterx5.kotlinspect/RetentionPolicy.MaxCount.component1|component1(){}[0]
+        final fun copy(kotlin/Int = ...): io.github.asterx5.kotlinspect/RetentionPolicy.MaxCount // io.github.asterx5.kotlinspect/RetentionPolicy.MaxCount.copy|copy(kotlin.Int){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.asterx5.kotlinspect/RetentionPolicy.MaxCount.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.asterx5.kotlinspect/RetentionPolicy.MaxCount.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/RetentionPolicy.MaxCount.toString|toString(){}[0]
+    }
+
+    final class MaxSize : io.github.asterx5.kotlinspect/RetentionPolicy { // io.github.asterx5.kotlinspect/RetentionPolicy.MaxSize|null[0]
+        constructor <init>(kotlin/Long) // io.github.asterx5.kotlinspect/RetentionPolicy.MaxSize.<init>|<init>(kotlin.Long){}[0]
+
+        final val bytes // io.github.asterx5.kotlinspect/RetentionPolicy.MaxSize.bytes|{}bytes[0]
+            final fun <get-bytes>(): kotlin/Long // io.github.asterx5.kotlinspect/RetentionPolicy.MaxSize.bytes.<get-bytes>|<get-bytes>(){}[0]
+
+        final fun component1(): kotlin/Long // io.github.asterx5.kotlinspect/RetentionPolicy.MaxSize.component1|component1(){}[0]
+        final fun copy(kotlin/Long = ...): io.github.asterx5.kotlinspect/RetentionPolicy.MaxSize // io.github.asterx5.kotlinspect/RetentionPolicy.MaxSize.copy|copy(kotlin.Long){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.asterx5.kotlinspect/RetentionPolicy.MaxSize.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.asterx5.kotlinspect/RetentionPolicy.MaxSize.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/RetentionPolicy.MaxSize.toString|toString(){}[0]
+    }
+
+    final object Forever : io.github.asterx5.kotlinspect/RetentionPolicy { // io.github.asterx5.kotlinspect/RetentionPolicy.Forever|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.asterx5.kotlinspect/RetentionPolicy.Forever.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.asterx5.kotlinspect/RetentionPolicy.Forever.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/RetentionPolicy.Forever.toString|toString(){}[0]
+    }
+
+    final object InMemoryOnly : io.github.asterx5.kotlinspect/RetentionPolicy { // io.github.asterx5.kotlinspect/RetentionPolicy.InMemoryOnly|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.asterx5.kotlinspect/RetentionPolicy.InMemoryOnly.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.asterx5.kotlinspect/RetentionPolicy.InMemoryOnly.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/RetentionPolicy.InMemoryOnly.toString|toString(){}[0]
+    }
+}
+
+sealed interface io.github.asterx5.kotlinspect/SessionPolicy { // io.github.asterx5.kotlinspect/SessionPolicy|null[0]
+    final class Fixed : io.github.asterx5.kotlinspect/SessionPolicy { // io.github.asterx5.kotlinspect/SessionPolicy.Fixed|null[0]
+        constructor <init>(kotlin/String) // io.github.asterx5.kotlinspect/SessionPolicy.Fixed.<init>|<init>(kotlin.String){}[0]
+
+        final val name // io.github.asterx5.kotlinspect/SessionPolicy.Fixed.name|{}name[0]
+            final fun <get-name>(): kotlin/String // io.github.asterx5.kotlinspect/SessionPolicy.Fixed.name.<get-name>|<get-name>(){}[0]
+
+        final fun component1(): kotlin/String // io.github.asterx5.kotlinspect/SessionPolicy.Fixed.component1|component1(){}[0]
+        final fun copy(kotlin/String = ...): io.github.asterx5.kotlinspect/SessionPolicy.Fixed // io.github.asterx5.kotlinspect/SessionPolicy.Fixed.copy|copy(kotlin.String){}[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.asterx5.kotlinspect/SessionPolicy.Fixed.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.asterx5.kotlinspect/SessionPolicy.Fixed.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/SessionPolicy.Fixed.toString|toString(){}[0]
+    }
+
+    final object Manual : io.github.asterx5.kotlinspect/SessionPolicy { // io.github.asterx5.kotlinspect/SessionPolicy.Manual|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.asterx5.kotlinspect/SessionPolicy.Manual.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.asterx5.kotlinspect/SessionPolicy.Manual.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/SessionPolicy.Manual.toString|toString(){}[0]
+    }
+
+    final object NewPerLaunch : io.github.asterx5.kotlinspect/SessionPolicy { // io.github.asterx5.kotlinspect/SessionPolicy.NewPerLaunch|null[0]
+        final fun equals(kotlin/Any?): kotlin/Boolean // io.github.asterx5.kotlinspect/SessionPolicy.NewPerLaunch.equals|equals(kotlin.Any?){}[0]
+        final fun hashCode(): kotlin/Int // io.github.asterx5.kotlinspect/SessionPolicy.NewPerLaunch.hashCode|hashCode(){}[0]
+        final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/SessionPolicy.NewPerLaunch.toString|toString(){}[0]
+    }
+}
+
+final class io.github.asterx5.kotlinspect/BubbleOptions { // io.github.asterx5.kotlinspect/BubbleOptions|null[0]
+    final var enabled // io.github.asterx5.kotlinspect/BubbleOptions.enabled|{}enabled[0]
+        final fun <get-enabled>(): kotlin/Boolean // io.github.asterx5.kotlinspect/BubbleOptions.enabled.<get-enabled>|<get-enabled>(){}[0]
+        final fun <set-enabled>(kotlin/Boolean) // io.github.asterx5.kotlinspect/BubbleOptions.enabled.<set-enabled>|<set-enabled>(kotlin.Boolean){}[0]
+}
+
+final class io.github.asterx5.kotlinspect/KotlinspectCall { // io.github.asterx5.kotlinspect/KotlinspectCall|null[0]
+    final val durationMillis // io.github.asterx5.kotlinspect/KotlinspectCall.durationMillis|{}durationMillis[0]
+        final fun <get-durationMillis>(): kotlin/Long? // io.github.asterx5.kotlinspect/KotlinspectCall.durationMillis.<get-durationMillis>|<get-durationMillis>(){}[0]
+    final val errorMessage // io.github.asterx5.kotlinspect/KotlinspectCall.errorMessage|{}errorMessage[0]
+        final fun <get-errorMessage>(): kotlin/String? // io.github.asterx5.kotlinspect/KotlinspectCall.errorMessage.<get-errorMessage>|<get-errorMessage>(){}[0]
+    final val host // io.github.asterx5.kotlinspect/KotlinspectCall.host|{}host[0]
+        final fun <get-host>(): kotlin/String // io.github.asterx5.kotlinspect/KotlinspectCall.host.<get-host>|<get-host>(){}[0]
+    final val id // io.github.asterx5.kotlinspect/KotlinspectCall.id|{}id[0]
+        final fun <get-id>(): kotlin/String // io.github.asterx5.kotlinspect/KotlinspectCall.id.<get-id>|<get-id>(){}[0]
+    final val isError // io.github.asterx5.kotlinspect/KotlinspectCall.isError|{}isError[0]
+        final fun <get-isError>(): kotlin/Boolean // io.github.asterx5.kotlinspect/KotlinspectCall.isError.<get-isError>|<get-isError>(){}[0]
+    final val method // io.github.asterx5.kotlinspect/KotlinspectCall.method|{}method[0]
+        final fun <get-method>(): kotlin/String // io.github.asterx5.kotlinspect/KotlinspectCall.method.<get-method>|<get-method>(){}[0]
+    final val path // io.github.asterx5.kotlinspect/KotlinspectCall.path|{}path[0]
+        final fun <get-path>(): kotlin/String // io.github.asterx5.kotlinspect/KotlinspectCall.path.<get-path>|<get-path>(){}[0]
+    final val requestBodySize // io.github.asterx5.kotlinspect/KotlinspectCall.requestBodySize|{}requestBodySize[0]
+        final fun <get-requestBodySize>(): kotlin/Long? // io.github.asterx5.kotlinspect/KotlinspectCall.requestBodySize.<get-requestBodySize>|<get-requestBodySize>(){}[0]
+    final val responseBodySize // io.github.asterx5.kotlinspect/KotlinspectCall.responseBodySize|{}responseBodySize[0]
+        final fun <get-responseBodySize>(): kotlin/Long? // io.github.asterx5.kotlinspect/KotlinspectCall.responseBodySize.<get-responseBodySize>|<get-responseBodySize>(){}[0]
+    final val sessionId // io.github.asterx5.kotlinspect/KotlinspectCall.sessionId|{}sessionId[0]
+        final fun <get-sessionId>(): kotlin/String // io.github.asterx5.kotlinspect/KotlinspectCall.sessionId.<get-sessionId>|<get-sessionId>(){}[0]
+    final val startedAtMillis // io.github.asterx5.kotlinspect/KotlinspectCall.startedAtMillis|{}startedAtMillis[0]
+        final fun <get-startedAtMillis>(): kotlin/Long // io.github.asterx5.kotlinspect/KotlinspectCall.startedAtMillis.<get-startedAtMillis>|<get-startedAtMillis>(){}[0]
+    final val state // io.github.asterx5.kotlinspect/KotlinspectCall.state|{}state[0]
+        final fun <get-state>(): io.github.asterx5.kotlinspect/CallState // io.github.asterx5.kotlinspect/KotlinspectCall.state.<get-state>|<get-state>(){}[0]
+    final val statusCode // io.github.asterx5.kotlinspect/KotlinspectCall.statusCode|{}statusCode[0]
+        final fun <get-statusCode>(): kotlin/Int? // io.github.asterx5.kotlinspect/KotlinspectCall.statusCode.<get-statusCode>|<get-statusCode>(){}[0]
+    final val url // io.github.asterx5.kotlinspect/KotlinspectCall.url|{}url[0]
+        final fun <get-url>(): kotlin/String // io.github.asterx5.kotlinspect/KotlinspectCall.url.<get-url>|<get-url>(){}[0]
+
+    final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/KotlinspectCall.toString|toString(){}[0]
+}
+
+final class io.github.asterx5.kotlinspect/KotlinspectConfigBuilder { // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder|null[0]
+    final val bubble // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.bubble|{}bubble[0]
+        final fun <get-bubble>(): io.github.asterx5.kotlinspect/BubbleOptions // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.bubble.<get-bubble>|<get-bubble>(){}[0]
+    final val toast // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.toast|{}toast[0]
+        final fun <get-toast>(): io.github.asterx5.kotlinspect/ToastOptions // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.toast.<get-toast>|<get-toast>(){}[0]
+
+    final var allowInRelease // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.allowInRelease|{}allowInRelease[0]
+        final fun <get-allowInRelease>(): kotlin/Boolean // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.allowInRelease.<get-allowInRelease>|<get-allowInRelease>(){}[0]
+        final fun <set-allowInRelease>(kotlin/Boolean) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.allowInRelease.<set-allowInRelease>|<set-allowInRelease>(kotlin.Boolean){}[0]
+    final var desktopAppName // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.desktopAppName|{}desktopAppName[0]
+        final fun <get-desktopAppName>(): kotlin/String? // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.desktopAppName.<get-desktopAppName>|<get-desktopAppName>(){}[0]
+        final fun <set-desktopAppName>(kotlin/String?) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.desktopAppName.<set-desktopAppName>|<set-desktopAppName>(kotlin.String?){}[0]
+    final var enabled // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.enabled|{}enabled[0]
+        final fun <get-enabled>(): kotlin/Boolean // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.enabled.<get-enabled>|<get-enabled>(){}[0]
+        final fun <set-enabled>(kotlin/Boolean) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.enabled.<set-enabled>|<set-enabled>(kotlin.Boolean){}[0]
+    final var maxBodyBytes // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.maxBodyBytes|{}maxBodyBytes[0]
+        final fun <get-maxBodyBytes>(): kotlin/Long // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.maxBodyBytes.<get-maxBodyBytes>|<get-maxBodyBytes>(){}[0]
+        final fun <set-maxBodyBytes>(kotlin/Long) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.maxBodyBytes.<set-maxBodyBytes>|<set-maxBodyBytes>(kotlin.Long){}[0]
+    final var retention // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.retention|{}retention[0]
+        final fun <get-retention>(): io.github.asterx5.kotlinspect/RetentionPolicy // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.retention.<get-retention>|<get-retention>(){}[0]
+        final fun <set-retention>(io.github.asterx5.kotlinspect/RetentionPolicy) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.retention.<set-retention>|<set-retention>(io.github.asterx5.kotlinspect.RetentionPolicy){}[0]
+    final var sessionPolicy // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.sessionPolicy|{}sessionPolicy[0]
+        final fun <get-sessionPolicy>(): io.github.asterx5.kotlinspect/SessionPolicy // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.sessionPolicy.<get-sessionPolicy>|<get-sessionPolicy>(){}[0]
+        final fun <set-sessionPolicy>(io.github.asterx5.kotlinspect/SessionPolicy) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.sessionPolicy.<set-sessionPolicy>|<set-sessionPolicy>(io.github.asterx5.kotlinspect.SessionPolicy){}[0]
+
+    final fun bodyRedactor(io.github.asterx5.kotlinspect/BodyRedactor) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.bodyRedactor|bodyRedactor(io.github.asterx5.kotlinspect.BodyRedactor){}[0]
+    final fun bubble(kotlin/Function1<io.github.asterx5.kotlinspect/BubbleOptions, kotlin/Unit>) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.bubble|bubble(kotlin.Function1<io.github.asterx5.kotlinspect.BubbleOptions,kotlin.Unit>){}[0]
+    final fun headerRedactor(io.github.asterx5.kotlinspect/HeaderRedactor) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.headerRedactor|headerRedactor(io.github.asterx5.kotlinspect.HeaderRedactor){}[0]
+    final fun redactHeaders(kotlin/Array<out kotlin/String>...) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.redactHeaders|redactHeaders(kotlin.Array<out|kotlin.String>...){}[0]
+    final fun redactQueryParameters(kotlin/Array<out kotlin/String>...) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.redactQueryParameters|redactQueryParameters(kotlin.Array<out|kotlin.String>...){}[0]
+    final fun retentionFor(kotlin/String, io.github.asterx5.kotlinspect/RetentionPolicy) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.retentionFor|retentionFor(kotlin.String;io.github.asterx5.kotlinspect.RetentionPolicy){}[0]
+    final fun toast(kotlin/Function1<io.github.asterx5.kotlinspect/ToastOptions, kotlin/Unit>) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.toast|toast(kotlin.Function1<io.github.asterx5.kotlinspect.ToastOptions,kotlin.Unit>){}[0]
+    final fun unredactHeaders(kotlin/Array<out kotlin/String>...) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.unredactHeaders|unredactHeaders(kotlin.Array<out|kotlin.String>...){}[0]
+}
+
+final class io.github.asterx5.kotlinspect/KotlinspectPluginConfig { // io.github.asterx5.kotlinspect/KotlinspectPluginConfig|null[0]
+    constructor <init>() // io.github.asterx5.kotlinspect/KotlinspectPluginConfig.<init>|<init>(){}[0]
+
+    final var enabled // io.github.asterx5.kotlinspect/KotlinspectPluginConfig.enabled|{}enabled[0]
+        final fun <get-enabled>(): kotlin/Boolean // io.github.asterx5.kotlinspect/KotlinspectPluginConfig.enabled.<get-enabled>|<get-enabled>(){}[0]
+        final fun <set-enabled>(kotlin/Boolean) // io.github.asterx5.kotlinspect/KotlinspectPluginConfig.enabled.<set-enabled>|<set-enabled>(kotlin.Boolean){}[0]
+    final var session // io.github.asterx5.kotlinspect/KotlinspectPluginConfig.session|{}session[0]
+        final fun <get-session>(): kotlin/String? // io.github.asterx5.kotlinspect/KotlinspectPluginConfig.session.<get-session>|<get-session>(){}[0]
+        final fun <set-session>(kotlin/String?) // io.github.asterx5.kotlinspect/KotlinspectPluginConfig.session.<set-session>|<set-session>(kotlin.String?){}[0]
+}
+
+final class io.github.asterx5.kotlinspect/KotlinspectSession { // io.github.asterx5.kotlinspect/KotlinspectSession|null[0]
+    final val createdAtMillis // io.github.asterx5.kotlinspect/KotlinspectSession.createdAtMillis|{}createdAtMillis[0]
+        final fun <get-createdAtMillis>(): kotlin/Long // io.github.asterx5.kotlinspect/KotlinspectSession.createdAtMillis.<get-createdAtMillis>|<get-createdAtMillis>(){}[0]
+    final val id // io.github.asterx5.kotlinspect/KotlinspectSession.id|{}id[0]
+        final fun <get-id>(): kotlin/String // io.github.asterx5.kotlinspect/KotlinspectSession.id.<get-id>|<get-id>(){}[0]
+    final val metadata // io.github.asterx5.kotlinspect/KotlinspectSession.metadata|{}metadata[0]
+        final fun <get-metadata>(): kotlin.collections/Map<kotlin/String, kotlin/String> // io.github.asterx5.kotlinspect/KotlinspectSession.metadata.<get-metadata>|<get-metadata>(){}[0]
+    final val name // io.github.asterx5.kotlinspect/KotlinspectSession.name|{}name[0]
+        final fun <get-name>(): kotlin/String // io.github.asterx5.kotlinspect/KotlinspectSession.name.<get-name>|<get-name>(){}[0]
+    final val tags // io.github.asterx5.kotlinspect/KotlinspectSession.tags|{}tags[0]
+        final fun <get-tags>(): kotlin.collections/Set<kotlin/String> // io.github.asterx5.kotlinspect/KotlinspectSession.tags.<get-tags>|<get-tags>(){}[0]
+
+    final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/KotlinspectSession.toString|toString(){}[0]
+}
+
+final class io.github.asterx5.kotlinspect/KotlinspectSessionContext : kotlin.coroutines/AbstractCoroutineContextElement { // io.github.asterx5.kotlinspect/KotlinspectSessionContext|null[0]
+    constructor <init>(kotlin/String) // io.github.asterx5.kotlinspect/KotlinspectSessionContext.<init>|<init>(kotlin.String){}[0]
+
+    final val name // io.github.asterx5.kotlinspect/KotlinspectSessionContext.name|{}name[0]
+        final fun <get-name>(): kotlin/String // io.github.asterx5.kotlinspect/KotlinspectSessionContext.name.<get-name>|<get-name>(){}[0]
+
+    final object Key : kotlin.coroutines/CoroutineContext.Key<io.github.asterx5.kotlinspect/KotlinspectSessionContext> // io.github.asterx5.kotlinspect/KotlinspectSessionContext.Key|null[0]
+}
+
+final class io.github.asterx5.kotlinspect/ToastOptions { // io.github.asterx5.kotlinspect/ToastOptions|null[0]
+    final var batchWindowMillis // io.github.asterx5.kotlinspect/ToastOptions.batchWindowMillis|{}batchWindowMillis[0]
+        final fun <get-batchWindowMillis>(): kotlin/Long // io.github.asterx5.kotlinspect/ToastOptions.batchWindowMillis.<get-batchWindowMillis>|<get-batchWindowMillis>(){}[0]
+        final fun <set-batchWindowMillis>(kotlin/Long) // io.github.asterx5.kotlinspect/ToastOptions.batchWindowMillis.<set-batchWindowMillis>|<set-batchWindowMillis>(kotlin.Long){}[0]
+    final var durationMillis // io.github.asterx5.kotlinspect/ToastOptions.durationMillis|{}durationMillis[0]
+        final fun <get-durationMillis>(): kotlin/Long // io.github.asterx5.kotlinspect/ToastOptions.durationMillis.<get-durationMillis>|<get-durationMillis>(){}[0]
+        final fun <set-durationMillis>(kotlin/Long) // io.github.asterx5.kotlinspect/ToastOptions.durationMillis.<set-durationMillis>|<set-durationMillis>(kotlin.Long){}[0]
+    final var enabled // io.github.asterx5.kotlinspect/ToastOptions.enabled|{}enabled[0]
+        final fun <get-enabled>(): kotlin/Boolean // io.github.asterx5.kotlinspect/ToastOptions.enabled.<get-enabled>|<get-enabled>(){}[0]
+        final fun <set-enabled>(kotlin/Boolean) // io.github.asterx5.kotlinspect/ToastOptions.enabled.<set-enabled>|<set-enabled>(kotlin.Boolean){}[0]
+    final var filter // io.github.asterx5.kotlinspect/ToastOptions.filter|{}filter[0]
+        final fun <get-filter>(): io.github.asterx5.kotlinspect/ToastFilter // io.github.asterx5.kotlinspect/ToastOptions.filter.<get-filter>|<get-filter>(){}[0]
+        final fun <set-filter>(io.github.asterx5.kotlinspect/ToastFilter) // io.github.asterx5.kotlinspect/ToastOptions.filter.<set-filter>|<set-filter>(io.github.asterx5.kotlinspect.ToastFilter){}[0]
+}
+
+final object io.github.asterx5.kotlinspect/Kotlinspect { // io.github.asterx5.kotlinspect/Kotlinspect|null[0]
+    final val callCount // io.github.asterx5.kotlinspect/Kotlinspect.callCount|{}callCount[0]
+        final fun <get-callCount>(): kotlinx.coroutines.flow/Flow<kotlin/Int> // io.github.asterx5.kotlinspect/Kotlinspect.callCount.<get-callCount>|<get-callCount>(){}[0]
+    final val calls // io.github.asterx5.kotlinspect/Kotlinspect.calls|{}calls[0]
+        final fun <get-calls>(): kotlinx.coroutines.flow/Flow<kotlin.collections/List<io.github.asterx5.kotlinspect/KotlinspectCall>> // io.github.asterx5.kotlinspect/Kotlinspect.calls.<get-calls>|<get-calls>(){}[0]
+    final val currentSession // io.github.asterx5.kotlinspect/Kotlinspect.currentSession|{}currentSession[0]
+        final fun <get-currentSession>(): kotlinx.coroutines.flow/Flow<io.github.asterx5.kotlinspect/KotlinspectSession?> // io.github.asterx5.kotlinspect/Kotlinspect.currentSession.<get-currentSession>|<get-currentSession>(){}[0]
+    final val errorCount // io.github.asterx5.kotlinspect/Kotlinspect.errorCount|{}errorCount[0]
+        final fun <get-errorCount>(): kotlinx.coroutines.flow/Flow<kotlin/Int> // io.github.asterx5.kotlinspect/Kotlinspect.errorCount.<get-errorCount>|<get-errorCount>(){}[0]
+    final val inFlightCount // io.github.asterx5.kotlinspect/Kotlinspect.inFlightCount|{}inFlightCount[0]
+        final fun <get-inFlightCount>(): kotlinx.coroutines.flow/Flow<kotlin/Int> // io.github.asterx5.kotlinspect/Kotlinspect.inFlightCount.<get-inFlightCount>|<get-inFlightCount>(){}[0]
+    final val isEnabled // io.github.asterx5.kotlinspect/Kotlinspect.isEnabled|{}isEnabled[0]
+        final fun <get-isEnabled>(): kotlin/Boolean // io.github.asterx5.kotlinspect/Kotlinspect.isEnabled.<get-isEnabled>|<get-isEnabled>(){}[0]
+    final val latestCall // io.github.asterx5.kotlinspect/Kotlinspect.latestCall|{}latestCall[0]
+        final fun <get-latestCall>(): kotlinx.coroutines.flow/Flow<io.github.asterx5.kotlinspect/KotlinspectCall?> // io.github.asterx5.kotlinspect/Kotlinspect.latestCall.<get-latestCall>|<get-latestCall>(){}[0]
+    final val sessions // io.github.asterx5.kotlinspect/Kotlinspect.sessions|{}sessions[0]
+        final fun <get-sessions>(): kotlinx.coroutines.flow/Flow<kotlin.collections/List<io.github.asterx5.kotlinspect/KotlinspectSession>> // io.github.asterx5.kotlinspect/Kotlinspect.sessions.<get-sessions>|<get-sessions>(){}[0]
+
+    final fun addSessionTags(kotlin/Array<out kotlin/String>...) // io.github.asterx5.kotlinspect/Kotlinspect.addSessionTags|addSessionTags(kotlin.Array<out|kotlin.String>...){}[0]
+    final fun calls(kotlin/String): kotlinx.coroutines.flow/Flow<kotlin.collections/List<io.github.asterx5.kotlinspect/KotlinspectCall>> // io.github.asterx5.kotlinspect/Kotlinspect.calls|calls(kotlin.String){}[0]
+    final fun clearAll() // io.github.asterx5.kotlinspect/Kotlinspect.clearAll|clearAll(){}[0]
+    final fun clearSession(kotlin/String) // io.github.asterx5.kotlinspect/Kotlinspect.clearSession|clearSession(kotlin.String){}[0]
+    final fun configure(kotlin/Function1<io.github.asterx5.kotlinspect/KotlinspectConfigBuilder, kotlin/Unit>) // io.github.asterx5.kotlinspect/Kotlinspect.configure|configure(kotlin.Function1<io.github.asterx5.kotlinspect.KotlinspectConfigBuilder,kotlin.Unit>){}[0]
+    final fun deleteSession(kotlin/String) // io.github.asterx5.kotlinspect/Kotlinspect.deleteSession|deleteSession(kotlin.String){}[0]
+    final fun openInspector() // io.github.asterx5.kotlinspect/Kotlinspect.openInspector|openInspector(){}[0]
+    final fun putSessionMetadata(kotlin/String, kotlin/String) // io.github.asterx5.kotlinspect/Kotlinspect.putSessionMetadata|putSessionMetadata(kotlin.String;kotlin.String){}[0]
+    final fun setBubbleVisible(kotlin/Boolean) // io.github.asterx5.kotlinspect/Kotlinspect.setBubbleVisible|setBubbleVisible(kotlin.Boolean){}[0]
+    final fun startSession(kotlin/String? = ..., kotlin.collections/Set<kotlin/String> = ..., kotlin.collections/Map<kotlin/String, kotlin/String> = ..., io.github.asterx5.kotlinspect/RetentionPolicy? = ...): kotlin/String? // io.github.asterx5.kotlinspect/Kotlinspect.startSession|startSession(kotlin.String?;kotlin.collections.Set<kotlin.String>;kotlin.collections.Map<kotlin.String,kotlin.String>;io.github.asterx5.kotlinspect.RetentionPolicy?){}[0]
+    final fun switchSession(kotlin/String) // io.github.asterx5.kotlinspect/Kotlinspect.switchSession|switchSession(kotlin.String){}[0]
+}
+
+final val io.github.asterx5.kotlinspect.internal.ui/io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Calls$stableprop // io.github.asterx5.kotlinspect.internal.ui/io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Calls$stableprop|#static{}io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Calls$stableprop[0]
+final val io.github.asterx5.kotlinspect.internal.ui/io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Detail$stableprop // io.github.asterx5.kotlinspect.internal.ui/io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Detail$stableprop|#static{}io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Detail$stableprop[0]
+final val io.github.asterx5.kotlinspect/KotlinspectPlugin // io.github.asterx5.kotlinspect/KotlinspectPlugin|{}KotlinspectPlugin[0]
+    final fun <get-KotlinspectPlugin>(): io.ktor.client.plugins.api/ClientPlugin<io.github.asterx5.kotlinspect/KotlinspectPluginConfig> // io.github.asterx5.kotlinspect/KotlinspectPlugin.<get-KotlinspectPlugin>|<get-KotlinspectPlugin>(){}[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_AfterReceiveHook_Context$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_AfterReceiveHook_Context$stableprop|#static{}io_github_asterx5_kotlinspect_AfterReceiveHook_Context$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_BubbleOptions$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_BubbleOptions$stableprop|#static{}io_github_asterx5_kotlinspect_BubbleOptions$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_Kotlinspect$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_Kotlinspect$stableprop|#static{}io_github_asterx5_kotlinspect_Kotlinspect$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectCall$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectCall$stableprop|#static{}io_github_asterx5_kotlinspect_KotlinspectCall$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectConfigBuilder$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectConfigBuilder$stableprop|#static{}io_github_asterx5_kotlinspect_KotlinspectConfigBuilder$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectPluginConfig$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectPluginConfig$stableprop|#static{}io_github_asterx5_kotlinspect_KotlinspectPluginConfig$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectSession$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectSession$stableprop|#static{}io_github_asterx5_kotlinspect_KotlinspectSession$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectSessionContext$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectSessionContext$stableprop|#static{}io_github_asterx5_kotlinspect_KotlinspectSessionContext$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_MonitoringHook_Context$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_MonitoringHook_Context$stableprop|#static{}io_github_asterx5_kotlinspect_MonitoringHook_Context$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_Forever$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_Forever$stableprop|#static{}io_github_asterx5_kotlinspect_RetentionPolicy_Forever$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_InMemoryOnly$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_InMemoryOnly$stableprop|#static{}io_github_asterx5_kotlinspect_RetentionPolicy_InMemoryOnly$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxAge$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxAge$stableprop|#static{}io_github_asterx5_kotlinspect_RetentionPolicy_MaxAge$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxCount$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxCount$stableprop|#static{}io_github_asterx5_kotlinspect_RetentionPolicy_MaxCount$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxSize$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxSize$stableprop|#static{}io_github_asterx5_kotlinspect_RetentionPolicy_MaxSize$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_Fixed$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_Fixed$stableprop|#static{}io_github_asterx5_kotlinspect_SessionPolicy_Fixed$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_Manual$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_Manual$stableprop|#static{}io_github_asterx5_kotlinspect_SessionPolicy_Manual$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_NewPerLaunch$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_NewPerLaunch$stableprop|#static{}io_github_asterx5_kotlinspect_SessionPolicy_NewPerLaunch$stableprop[0]
+final val io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_ToastOptions$stableprop // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_ToastOptions$stableprop|#static{}io_github_asterx5_kotlinspect_ToastOptions$stableprop[0]
+
+final fun (io.ktor.client.request/HttpRequestBuilder).io.github.asterx5.kotlinspect/kotlinspectSession(kotlin/String) // io.github.asterx5.kotlinspect/kotlinspectSession|kotlinspectSession@io.ktor.client.request.HttpRequestBuilder(kotlin.String){}[0]
+final fun io.github.asterx5.kotlinspect.internal.ui/io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Calls$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect.internal.ui/io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Calls$stableprop_getter|io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Calls$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect.internal.ui/io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Detail$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect.internal.ui/io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Detail$stableprop_getter|io_github_asterx5_kotlinspect_internal_ui_InspectorRoute_Detail$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_AfterReceiveHook_Context$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_AfterReceiveHook_Context$stableprop_getter|io_github_asterx5_kotlinspect_AfterReceiveHook_Context$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_BubbleOptions$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_BubbleOptions$stableprop_getter|io_github_asterx5_kotlinspect_BubbleOptions$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_Kotlinspect$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_Kotlinspect$stableprop_getter|io_github_asterx5_kotlinspect_Kotlinspect$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectCall$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectCall$stableprop_getter|io_github_asterx5_kotlinspect_KotlinspectCall$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectConfigBuilder$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectConfigBuilder$stableprop_getter|io_github_asterx5_kotlinspect_KotlinspectConfigBuilder$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectPluginConfig$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectPluginConfig$stableprop_getter|io_github_asterx5_kotlinspect_KotlinspectPluginConfig$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectSession$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectSession$stableprop_getter|io_github_asterx5_kotlinspect_KotlinspectSession$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectSessionContext$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_KotlinspectSessionContext$stableprop_getter|io_github_asterx5_kotlinspect_KotlinspectSessionContext$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_MonitoringHook_Context$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_MonitoringHook_Context$stableprop_getter|io_github_asterx5_kotlinspect_MonitoringHook_Context$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_Forever$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_Forever$stableprop_getter|io_github_asterx5_kotlinspect_RetentionPolicy_Forever$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_InMemoryOnly$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_InMemoryOnly$stableprop_getter|io_github_asterx5_kotlinspect_RetentionPolicy_InMemoryOnly$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxAge$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxAge$stableprop_getter|io_github_asterx5_kotlinspect_RetentionPolicy_MaxAge$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxCount$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxCount$stableprop_getter|io_github_asterx5_kotlinspect_RetentionPolicy_MaxCount$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxSize$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_RetentionPolicy_MaxSize$stableprop_getter|io_github_asterx5_kotlinspect_RetentionPolicy_MaxSize$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_Fixed$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_Fixed$stableprop_getter|io_github_asterx5_kotlinspect_SessionPolicy_Fixed$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_Manual$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_Manual$stableprop_getter|io_github_asterx5_kotlinspect_SessionPolicy_Manual$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_NewPerLaunch$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_SessionPolicy_NewPerLaunch$stableprop_getter|io_github_asterx5_kotlinspect_SessionPolicy_NewPerLaunch$stableprop_getter(){}[0]
+final fun io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_ToastOptions$stableprop_getter(): kotlin/Int // io.github.asterx5.kotlinspect/io_github_asterx5_kotlinspect_ToastOptions$stableprop_getter|io_github_asterx5_kotlinspect_ToastOptions$stableprop_getter(){}[0]
+final suspend fun <#A: kotlin/Any?> io.github.asterx5.kotlinspect/withKotlinspectSession(kotlin/String, kotlin.coroutines/SuspendFunction0<#A>): #A // io.github.asterx5.kotlinspect/withKotlinspectSession|withKotlinspectSession(kotlin.String;kotlin.coroutines.SuspendFunction0<0:0>){0§<kotlin.Any?>}[0]

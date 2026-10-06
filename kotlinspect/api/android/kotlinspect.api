@@ -1,0 +1,255 @@
+public abstract interface class io/github/asterx5/kotlinspect/BodyRedactor {
+	public abstract fun redact (Ljava/lang/String;Ljava/lang/String;Z)Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/BubbleOptions {
+	public static final field $stable I
+	public final fun getEnabled ()Z
+	public final fun setEnabled (Z)V
+}
+
+public final class io/github/asterx5/kotlinspect/CallState : java/lang/Enum {
+	public static final field Cancelled Lio/github/asterx5/kotlinspect/CallState;
+	public static final field Complete Lio/github/asterx5/kotlinspect/CallState;
+	public static final field Failed Lio/github/asterx5/kotlinspect/CallState;
+	public static final field Pending Lio/github/asterx5/kotlinspect/CallState;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/asterx5/kotlinspect/CallState;
+	public static fun values ()[Lio/github/asterx5/kotlinspect/CallState;
+}
+
+public abstract interface class io/github/asterx5/kotlinspect/HeaderRedactor {
+	public abstract fun redact (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/Kotlinspect {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/asterx5/kotlinspect/Kotlinspect;
+	public final fun addSessionTags ([Ljava/lang/String;)V
+	public final fun calls (Ljava/lang/String;)Lkotlinx/coroutines/flow/Flow;
+	public final fun clearAll ()V
+	public final fun clearSession (Ljava/lang/String;)V
+	public final fun configure (Lkotlin/jvm/functions/Function1;)V
+	public final fun deleteSession (Ljava/lang/String;)V
+	public final fun getCallCount ()Lkotlinx/coroutines/flow/Flow;
+	public final fun getCalls ()Lkotlinx/coroutines/flow/Flow;
+	public final fun getCurrentSession ()Lkotlinx/coroutines/flow/Flow;
+	public final fun getErrorCount ()Lkotlinx/coroutines/flow/Flow;
+	public final fun getInFlightCount ()Lkotlinx/coroutines/flow/Flow;
+	public final fun getLatestCall ()Lkotlinx/coroutines/flow/Flow;
+	public final fun getSessions ()Lkotlinx/coroutines/flow/Flow;
+	public final fun isEnabled ()Z
+	public final fun openInspector ()V
+	public final fun putSessionMetadata (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun setBubbleVisible (Z)V
+	public final fun startSession (Ljava/lang/String;Ljava/util/Set;Ljava/util/Map;Lio/github/asterx5/kotlinspect/RetentionPolicy;)Ljava/lang/String;
+	public static synthetic fun startSession$default (Lio/github/asterx5/kotlinspect/Kotlinspect;Ljava/lang/String;Ljava/util/Set;Ljava/util/Map;Lio/github/asterx5/kotlinspect/RetentionPolicy;ILjava/lang/Object;)Ljava/lang/String;
+	public final fun switchSession (Ljava/lang/String;)V
+}
+
+public final class io/github/asterx5/kotlinspect/KotlinspectCall {
+	public static final field $stable I
+	public final fun getDurationMillis ()Ljava/lang/Long;
+	public final fun getErrorMessage ()Ljava/lang/String;
+	public final fun getHost ()Ljava/lang/String;
+	public final fun getId ()Ljava/lang/String;
+	public final fun getMethod ()Ljava/lang/String;
+	public final fun getPath ()Ljava/lang/String;
+	public final fun getRequestBodySize ()Ljava/lang/Long;
+	public final fun getResponseBodySize ()Ljava/lang/Long;
+	public final fun getSessionId ()Ljava/lang/String;
+	public final fun getStartedAtMillis ()J
+	public final fun getState ()Lio/github/asterx5/kotlinspect/CallState;
+	public final fun getStatusCode ()Ljava/lang/Integer;
+	public final fun getUrl ()Ljava/lang/String;
+	public final fun isError ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/KotlinspectConfigBuilder {
+	public static final field $stable I
+	public final fun bodyRedactor (Lio/github/asterx5/kotlinspect/BodyRedactor;)V
+	public final fun bubble (Lkotlin/jvm/functions/Function1;)V
+	public final fun getAllowInRelease ()Z
+	public final fun getBubble ()Lio/github/asterx5/kotlinspect/BubbleOptions;
+	public final fun getDesktopAppName ()Ljava/lang/String;
+	public final fun getEnabled ()Z
+	public final fun getMaxBodyBytes ()J
+	public final fun getRetention ()Lio/github/asterx5/kotlinspect/RetentionPolicy;
+	public final fun getSessionPolicy ()Lio/github/asterx5/kotlinspect/SessionPolicy;
+	public final fun getToast ()Lio/github/asterx5/kotlinspect/ToastOptions;
+	public final fun headerRedactor (Lio/github/asterx5/kotlinspect/HeaderRedactor;)V
+	public final fun redactHeaders ([Ljava/lang/String;)V
+	public final fun redactQueryParameters ([Ljava/lang/String;)V
+	public final fun retentionFor (Ljava/lang/String;Lio/github/asterx5/kotlinspect/RetentionPolicy;)V
+	public final fun setAllowInRelease (Z)V
+	public final fun setDesktopAppName (Ljava/lang/String;)V
+	public final fun setEnabled (Z)V
+	public final fun setMaxBodyBytes (J)V
+	public final fun setRetention (Lio/github/asterx5/kotlinspect/RetentionPolicy;)V
+	public final fun setSessionPolicy (Lio/github/asterx5/kotlinspect/SessionPolicy;)V
+	public final fun toast (Lkotlin/jvm/functions/Function1;)V
+	public final fun unredactHeaders ([Ljava/lang/String;)V
+}
+
+public final class io/github/asterx5/kotlinspect/KotlinspectPluginConfig {
+	public static final field $stable I
+	public fun <init> ()V
+	public final fun getEnabled ()Z
+	public final fun getSession ()Ljava/lang/String;
+	public final fun setEnabled (Z)V
+	public final fun setSession (Ljava/lang/String;)V
+}
+
+public final class io/github/asterx5/kotlinspect/KotlinspectPluginKt {
+	public static final fun getKotlinspectPlugin ()Lio/ktor/client/plugins/api/ClientPlugin;
+	public static final fun kotlinspectSession (Lio/ktor/client/request/HttpRequestBuilder;Ljava/lang/String;)V
+	public static final fun withKotlinspectSession (Ljava/lang/String;Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/github/asterx5/kotlinspect/KotlinspectSession {
+	public static final field $stable I
+	public final fun getCreatedAtMillis ()J
+	public final fun getId ()Ljava/lang/String;
+	public final fun getMetadata ()Ljava/util/Map;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getTags ()Ljava/util/Set;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/KotlinspectSessionContext : kotlin/coroutines/AbstractCoroutineContextElement {
+	public static final field $stable I
+	public static final field Key Lio/github/asterx5/kotlinspect/KotlinspectSessionContext$Key;
+	public fun <init> (Ljava/lang/String;)V
+	public final fun getName ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/KotlinspectSessionContext$Key : kotlin/coroutines/CoroutineContext$Key {
+}
+
+public abstract interface class io/github/asterx5/kotlinspect/RetentionPolicy {
+}
+
+public final class io/github/asterx5/kotlinspect/RetentionPolicy$Forever : io/github/asterx5/kotlinspect/RetentionPolicy {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/asterx5/kotlinspect/RetentionPolicy$Forever;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/RetentionPolicy$InMemoryOnly : io/github/asterx5/kotlinspect/RetentionPolicy {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/asterx5/kotlinspect/RetentionPolicy$InMemoryOnly;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/RetentionPolicy$MaxAge : io/github/asterx5/kotlinspect/RetentionPolicy {
+	public static final field $stable I
+	public synthetic fun <init> (JLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1-UwyO8pc ()J
+	public final fun copy-LRDsOJo (J)Lio/github/asterx5/kotlinspect/RetentionPolicy$MaxAge;
+	public static synthetic fun copy-LRDsOJo$default (Lio/github/asterx5/kotlinspect/RetentionPolicy$MaxAge;JILjava/lang/Object;)Lio/github/asterx5/kotlinspect/RetentionPolicy$MaxAge;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getMaxAge-UwyO8pc ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/RetentionPolicy$MaxCount : io/github/asterx5/kotlinspect/RetentionPolicy {
+	public static final field $stable I
+	public fun <init> (I)V
+	public final fun component1 ()I
+	public final fun copy (I)Lio/github/asterx5/kotlinspect/RetentionPolicy$MaxCount;
+	public static synthetic fun copy$default (Lio/github/asterx5/kotlinspect/RetentionPolicy$MaxCount;IILjava/lang/Object;)Lio/github/asterx5/kotlinspect/RetentionPolicy$MaxCount;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCount ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/RetentionPolicy$MaxSize : io/github/asterx5/kotlinspect/RetentionPolicy {
+	public static final field $stable I
+	public fun <init> (J)V
+	public final fun component1 ()J
+	public final fun copy (J)Lio/github/asterx5/kotlinspect/RetentionPolicy$MaxSize;
+	public static synthetic fun copy$default (Lio/github/asterx5/kotlinspect/RetentionPolicy$MaxSize;JILjava/lang/Object;)Lio/github/asterx5/kotlinspect/RetentionPolicy$MaxSize;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBytes ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/github/asterx5/kotlinspect/SessionPolicy {
+}
+
+public final class io/github/asterx5/kotlinspect/SessionPolicy$Fixed : io/github/asterx5/kotlinspect/SessionPolicy {
+	public static final field $stable I
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/github/asterx5/kotlinspect/SessionPolicy$Fixed;
+	public static synthetic fun copy$default (Lio/github/asterx5/kotlinspect/SessionPolicy$Fixed;Ljava/lang/String;ILjava/lang/Object;)Lio/github/asterx5/kotlinspect/SessionPolicy$Fixed;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getName ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/SessionPolicy$Manual : io/github/asterx5/kotlinspect/SessionPolicy {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/asterx5/kotlinspect/SessionPolicy$Manual;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/SessionPolicy$NewPerLaunch : io/github/asterx5/kotlinspect/SessionPolicy {
+	public static final field $stable I
+	public static final field INSTANCE Lio/github/asterx5/kotlinspect/SessionPolicy$NewPerLaunch;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/github/asterx5/kotlinspect/ToastFilter {
+	public static final field Companion Lio/github/asterx5/kotlinspect/ToastFilter$Companion;
+	public abstract fun shouldShow (Lio/github/asterx5/kotlinspect/KotlinspectCall;)Z
+}
+
+public final class io/github/asterx5/kotlinspect/ToastFilter$Companion {
+	public final fun getAll ()Lio/github/asterx5/kotlinspect/ToastFilter;
+	public final fun getErrorsOnly ()Lio/github/asterx5/kotlinspect/ToastFilter;
+}
+
+public final class io/github/asterx5/kotlinspect/ToastOptions {
+	public static final field $stable I
+	public final fun getBatchWindowMillis ()J
+	public final fun getDurationMillis ()J
+	public final fun getEnabled ()Z
+	public final fun getFilter ()Lio/github/asterx5/kotlinspect/ToastFilter;
+	public final fun setBatchWindowMillis (J)V
+	public final fun setDurationMillis (J)V
+	public final fun setEnabled (Z)V
+	public final fun setFilter (Lio/github/asterx5/kotlinspect/ToastFilter;)V
+}
+
+public final class io/github/asterx5/kotlinspect/internal/ui/ComposableSingletons$InspectorKt {
+	public static final field INSTANCE Lio/github/asterx5/kotlinspect/internal/ui/ComposableSingletons$InspectorKt;
+	public fun <init> ()V
+	public final fun getLambda$-1559837228$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
+	public final fun getLambda$-1731232089$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
+	public final fun getLambda$-600405413$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
+	public final fun getLambda$-832921060$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
+	public final fun getLambda$127662885$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
+	public final fun getLambda$142143591$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
+	public final fun getLambda$1913502239$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
+	public final fun getLambda$2003562529$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
+	public final fun getLambda$371221414$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
+	public final fun getLambda$650989920$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
+	public final fun getLambda$699003012$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
+	public final fun getLambda$917945033$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
+	public final fun getLambda$925657493$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
+}
+
