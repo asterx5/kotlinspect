@@ -24,7 +24,7 @@ dependencyResolutionManagement {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.asterx5:kotlinspect:1.0.0-beta01")
+            implementation("io.github.asterx5:kotlinspect:1.0.0-beta02")
         }
     }
 }
