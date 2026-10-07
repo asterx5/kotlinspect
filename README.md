@@ -3,7 +3,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.asterx5/kotlinspect?label=Maven%20Central&include_prereleases)](https://central.sonatype.com/artifact/io.github.asterx5/kotlinspect)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-Latest: **1.0.0-beta03**. See the [changelog](CHANGELOG.md).
+Latest: **1.0.0-beta04**. See the [changelog](CHANGELOG.md).
 
 A network inspector for Kotlin Multiplatform apps that use Ktor. Add one dependency and every HTTP call shows up in a floating bubble, a toast, and a full inspector screen on **Android, iOS and Desktop**. It is off in release builds by default.
 
@@ -29,7 +29,7 @@ dependencyResolutionManagement {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.asterx5:kotlinspect:1.0.0-beta03")
+            implementation("io.github.asterx5:kotlinspect:1.0.0-beta04")
         }
     }
 }

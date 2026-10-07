@@ -2,6 +2,12 @@
 
 All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 
+## 1.0.0-beta04
+
+- iOS: the inspector opens as a standard sheet (swipe down to close). Fixes the inspector appearing and then vanishing until the app was sent to the background.
+- iOS: if the inspector cannot be shown, the bubble comes back instead of staying hidden.
+- Both inspectors: status filters on one row, with a method filter row underneath that lists only the methods present in the session.
+
 ## 1.0.0-beta03
 
 - New inspector design: custom theme instead of stock Material 3, call list with live stats, filter chips with counts, method badges and per-row timing bars.
