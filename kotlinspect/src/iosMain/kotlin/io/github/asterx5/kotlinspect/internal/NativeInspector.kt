@@ -8,7 +8,6 @@ import io.github.asterx5.kotlinspect.CallState
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
 import io.github.asterx5.kotlinspect.internal.db.RecordSummary
 import io.github.asterx5.kotlinspect.internal.db.SessionEntity
-import io.github.asterx5.kotlinspect.internal.ui.COMMON_METHODS
 import io.github.asterx5.kotlinspect.internal.ui.KsColors
 import io.github.asterx5.kotlinspect.internal.ui.StatusFilter
 import io.github.asterx5.kotlinspect.internal.ui.filterRecords
@@ -16,6 +15,7 @@ import io.github.asterx5.kotlinspect.internal.ui.highlight
 import io.github.asterx5.kotlinspect.internal.ui.ksColors
 import io.github.asterx5.kotlinspect.internal.ui.looksLikeJsonLines
 import io.github.asterx5.kotlinspect.internal.ui.methodColor
+import io.github.asterx5.kotlinspect.internal.ui.orderMethods
 import io.github.asterx5.kotlinspect.internal.ui.statusColor
 import io.github.asterx5.kotlinspect.internal.ui.toCurl
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -113,7 +113,8 @@ internal class NativeInspector(private val runtime: KotlinspectRuntime, private 
         val controller = UIViewController(nibName = null, bundle = null)
         private val table = UITableView(frame = CGRectMake(0.0, 0.0, 0.0, 0.0), style = UITableViewStyle.UITableViewStylePlain)
         private val filter = UISegmentedControl(items = StatusFilter.entries.map { it.label })
-        private val methodFilter = UISegmentedControl(items = listOf("Any") + COMMON_METHODS)
+        private val methodFilter = UISegmentedControl(items = listOf("Any"))
+        private var methods: List<String> = emptyList()
         private val stats = UILabel()
         private val empty = UILabel()
         private val search = UISearchController(searchResultsController = null)
@@ -233,7 +234,8 @@ internal class NativeInspector(private val runtime: KotlinspectRuntime, private 
 
         fun refresh() {
             val status = StatusFilter.entries.getOrElse(filter.selectedSegmentIndex.toInt()) { StatusFilter.All }
-            val method = COMMON_METHODS.getOrNull(methodFilter.selectedSegmentIndex.toInt() - 1)
+            updateMethodSegments()
+            val method = methods.getOrNull(methodFilter.selectedSegmentIndex.toInt() - 1)
             shown = filterRecords(all, query, status, method)
             val errors = all.count { it.callState == CallState.Failed || (it.statusCode ?: 0) >= 400 }
             val done = all.mapNotNull { it.durationMs }
@@ -242,6 +244,21 @@ internal class NativeInspector(private val runtime: KotlinspectRuntime, private 
             empty.text = if (all.isEmpty()) "Waiting for traffic" else "Nothing matches"
             empty.hidden = shown.isNotEmpty()
             table.reloadData()
+        }
+
+        /** Rebuilds the method segments when the set of methods in the session changes. */
+        private fun updateMethodSegments() {
+            val present = orderMethods(all.map { it.method })
+            if (present == methods) return
+            val selected = methods.getOrNull(methodFilter.selectedSegmentIndex.toInt() - 1)
+            methods = present
+            methodFilter.removeAllSegments()
+            (listOf("Any") + present).forEachIndexed { i, title ->
+                methodFilter.insertSegmentWithTitle(title, atIndex = i.toULong(), animated = false)
+            }
+            val index = selected?.let { present.indexOf(it) }?.takeIf { it >= 0 }?.plus(1) ?: 0
+            methodFilter.selectedSegmentIndex = index.toLong()
+            methodFilter.hidden = present.isEmpty()
         }
 
         private inner class DataSource : NSObject(), UITableViewDataSourceProtocol {

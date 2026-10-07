@@ -103,8 +103,14 @@ internal class CallListState {
     var sessionsOpen: Boolean by mutableStateOf(false)
 }
 
-/** Method filters shown in both inspectors, before any other methods seen in the session. */
+/** Order for method filters: the common ones first, then any others alphabetically. */
 internal val COMMON_METHODS: List<String> = listOf("GET", "POST", "PUT", "PATCH", "DELETE")
+
+/** The methods present in a session, in filter order. */
+internal fun orderMethods(present: Collection<String>): List<String> {
+    val upper = present.map { it.uppercase() }.toSet()
+    return COMMON_METHODS.filter { it in upper } + (upper - COMMON_METHODS.toSet()).sorted()
+}
 
 internal fun filterRecords(records: List<RecordSummary>, query: String, status: StatusFilter, method: String?): List<RecordSummary> {
     val q = query.trim()
@@ -179,7 +185,7 @@ private fun CallListScreen(runtime: KotlinspectRuntime, state: CallListState, on
     }
     val statusCounts = remember(records) { StatusFilter.entries.associateWith { f -> records.count(f::matches) } }
     val methodCounts = remember(records) { records.groupingBy { it.method.uppercase() }.eachCount() }
-    val methods = remember(methodCounts) { COMMON_METHODS + (methodCounts.keys - COMMON_METHODS.toSet()).sorted() }
+    val methods = remember(methodCounts) { orderMethods(methodCounts.keys) }
     val maxDuration = remember(records) { records.maxOfOrNull { it.durationMs ?: 0 } ?: 0 }
 
     Box(Modifier.fillMaxSize()) {
@@ -221,8 +227,8 @@ private fun CallListScreen(runtime: KotlinspectRuntime, state: CallListState, on
                     }
                 }
             }
-            // Method filters are always shown so they are easy to find.
-            Row(
+            // Only the methods present in this session.
+            if (methods.isNotEmpty()) Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
