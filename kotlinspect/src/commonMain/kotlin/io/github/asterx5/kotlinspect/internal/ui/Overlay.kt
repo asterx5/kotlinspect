@@ -14,22 +14,17 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.collectAsState
@@ -39,17 +34,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.asterx5.kotlinspect.internal.KotlinspectRuntime
+import io.github.asterx5.kotlinspect.internal.db.CallCounts
+import io.github.asterx5.kotlinspect.internal.db.RecordEntity
+import io.github.asterx5.kotlinspect.internal.formatDuration
+import io.github.asterx5.kotlinspect.internal.isError
 import io.github.asterx5.kotlinspect.internal.toCall
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,77 +58,69 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import io.github.asterx5.kotlinspect.internal.db.RecordEntity
-import io.github.asterx5.kotlinspect.internal.formatDuration
-import io.github.asterx5.kotlinspect.internal.isError
 import kotlin.math.roundToInt
 
 @Immutable
 internal data class BubbleCounts(val total: Int = 0, val inFlight: Int = 0, val errors: Int = 0)
 
+/** One aggregate query per change, deduplicated and conflated so bursts cost little. */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal fun KotlinspectRuntime.bubbleCounts(): Flow<BubbleCounts> = currentSessionId.flatMapLatest { id ->
     if (id == null) {
         flowOf(BubbleCounts())
     } else {
-        val records = database.records()
-        combine(records.observeCount(id), records.observeInFlight(id), records.observeErrorCount(id)) { t, f, e ->
-            BubbleCounts(t, f, e)
-        }
+        database.records().observeCounts(id).map { c: CallCounts -> BubbleCounts(c.total, c.inFlight, c.errors) }
     }
-}
+}.distinctUntilChanged().conflate()
 
-/** The circle itself: call count, a spinning ring while calls are in flight, red when errors exist. */
+/** The bubble: a dark disc with the call count, an accent ring that spins while calls are in flight, red when errors exist. */
 @Composable
 internal fun BubbleContent(counts: BubbleCounts, modifier: Modifier = Modifier) {
+    val c = Ks.colors
     val hasErrors = counts.errors > 0
-    val fill = if (hasErrors) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    val ring = if (hasErrors) c.error else c.accent
     Box(modifier.size(BUBBLE_SIZE), contentAlignment = Alignment.Center) {
         Box(
             Modifier
-                .size(52.dp)
-                .shadow(6.dp, CircleShape)
-                .background(fill, CircleShape)
-                .border(2.dp, Color.White.copy(alpha = 0.85f), CircleShape),
+                .size(50.dp)
+                .shadow(10.dp, CircleShape)
+                .clip(CircleShape)
+                .background(BubbleInk)
+                .border(2.dp, ring, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
+            KsText(
                 text = if (counts.total > 999) "999+" else counts.total.toString(),
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = if (counts.total > 99) 13.sp else 17.sp,
+                style = Ks.type.monoStrong.copy(color = BubbleText, fontSize = if (counts.total > 99) 13.sp else 17.sp),
+                maxLines = 1,
             )
         }
-        if (counts.inFlight > 0) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(60.dp),
-                color = fill,
-                strokeWidth = 3.dp,
-            )
-        }
+        if (counts.inFlight > 0) Spinner(ring, 60.dp, stroke = 3.dp)
         if (hasErrors) {
             Box(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .size(22.dp)
-                    .background(Color.White, CircleShape)
-                    .border(1.5.dp, fill, CircleShape),
+                Modifier.align(Alignment.TopEnd).padding(top = 2.dp, end = 2.dp)
+                    .size(20.dp).clip(CircleShape).background(c.error),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = if (counts.errors > 99) "99" else counts.errors.toString(),
-                    color = fill,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
+                KsText(
+                    if (counts.errors > 99) "99" else counts.errors.toString(),
+                    Ks.type.monoSmall.copy(color = BubbleText, fontWeight = FontWeight.Bold, fontSize = 10.sp),
+                    maxLines = 1,
                 )
             }
         }
     }
 }
+
+// The bubble stays dark in both themes so it reads clearly over any app.
+private val BubbleInk = androidx.compose.ui.graphics.Color(0xFF15171D)
+private val BubbleText = androidx.compose.ui.graphics.Color(0xFFF2F3F7)
 
 internal val BUBBLE_SIZE = 64.dp
 
@@ -191,7 +181,14 @@ internal fun FullScreenOverlay(runtime: KotlinspectRuntime, toasts: ToastControl
 // region Toast
 
 @Immutable
-internal data class ToastMessage(val id: Long, val title: String, val subtitle: String?, val isError: Boolean)
+internal data class ToastMessage(
+    val id: Long,
+    val title: String,
+    val subtitle: String?,
+    val isError: Boolean,
+    val method: String? = null,
+    val status: String? = null,
+)
 
 internal fun buildToast(id: Long, records: List<RecordEntity>): ToastMessage? {
     if (records.isEmpty()) return null
@@ -201,7 +198,14 @@ internal fun buildToast(id: Long, records: List<RecordEntity>): ToastMessage? {
         return "${r.method} ${r.path} · $status · ${formatDuration(r.durationMs)}"
     }
     if (records.size == 1) {
-        return ToastMessage(id, line(last), null, last.isError)
+        return ToastMessage(
+            id = id,
+            title = line(last),
+            subtitle = null,
+            isError = last.isError,
+            method = last.method,
+            status = last.statusCode?.toString() ?: last.state.uppercase(),
+        )
     }
     val errors = records.count { it.isError }
     val title = buildString {
@@ -272,38 +276,32 @@ internal fun ToastHost(message: ToastMessage?, modifier: Modifier = Modifier) {
     }
 }
 
+/** Dark pill in both themes: status dot, method badge, then the summary. */
 @Composable
 internal fun ToastCard(message: ToastMessage, modifier: Modifier = Modifier) {
-    val accent = if (message.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-    Surface(
-        modifier = modifier.widthIn(max = 420.dp).padding(horizontal = 12.dp),
-        shape = RoundedCornerShape(14.dp),
-        tonalElevation = 4.dp,
-        shadowElevation = 8.dp,
-        color = MaterialTheme.colorScheme.surface,
+    val c = Ks.colors
+    val accent = if (message.isError) c.error else c.ok
+    Row(
+        modifier
+            .widthIn(max = 440.dp)
+            .padding(horizontal = 12.dp)
+            .shadow(12.dp, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(BubbleInk)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(10.dp).background(accent, CircleShape))
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.fillMaxWidth(fraction = 1f)) {
-                Text(
-                    message.title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontFamily = Mono,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                message.subtitle?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = Mono,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+        Dot(accent, 9.dp)
+        Spacer(Modifier.width(10.dp))
+        if (message.method != null) {
+            MethodBadge(message.method)
+            Spacer(Modifier.width(8.dp))
+        }
+        Column(Modifier.weight(1f, fill = false)) {
+            val title = if (message.method != null) message.title.removePrefix(message.method).trimStart() else message.title
+            KsText(title, Ks.type.monoSmall.copy(color = BubbleText), maxLines = 1)
+            message.subtitle?.let {
+                KsText(it, Ks.type.caption.copy(color = BubbleText.copy(alpha = 0.6f)), maxLines = 1)
             }
         }
     }

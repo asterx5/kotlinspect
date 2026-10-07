@@ -94,6 +94,7 @@ private object IosOverlay {
     private var toast: UIWindow? = null
     private var toasts: ToastController? = null
     private var inspector: UIWindow? = null
+    private var native: NativeInspector? = null
     private var previousKeyWindow: UIWindow? = null
     private var pendingObserver: Any? = null
 
@@ -248,8 +249,10 @@ private object IosOverlay {
             setFrame(scene.coordinateSpace.bounds)
             windowLevel = UIWindowLevelAlert + 2
         }
-        window.rootViewController = ComposeUIViewController {
-            InspectorApp(runtime, onClose = { closeInspector(runtime) })
+        window.rootViewController = if (NativeInspector.isSupported()) {
+            NativeInspector(runtime, onClose = { closeInspector(runtime) }).also { native = it }.root
+        } else {
+            ComposeUIViewController { InspectorApp(runtime, onClose = { closeInspector(runtime) }) }
         }
         inspector = window
         refresh(runtime)
@@ -269,6 +272,8 @@ private object IosOverlay {
             completion = { _ ->
                 window.hidden = true
                 window.rootViewController = null
+                native?.dispose()
+                native = null
                 inspector = null
                 previousKeyWindow?.makeKeyWindow()
                 previousKeyWindow = null

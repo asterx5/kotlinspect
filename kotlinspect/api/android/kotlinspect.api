@@ -235,21 +235,3 @@ public final class io/github/asterx5/kotlinspect/ToastOptions {
 	public final fun setFilter (Lio/github/asterx5/kotlinspect/ToastFilter;)V
 }
 
-public final class io/github/asterx5/kotlinspect/internal/ui/ComposableSingletons$InspectorKt {
-	public static final field INSTANCE Lio/github/asterx5/kotlinspect/internal/ui/ComposableSingletons$InspectorKt;
-	public fun <init> ()V
-	public final fun getLambda$-1559837228$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
-	public final fun getLambda$-1731232089$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
-	public final fun getLambda$-600405413$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
-	public final fun getLambda$-832921060$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
-	public final fun getLambda$127662885$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
-	public final fun getLambda$142143591$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
-	public final fun getLambda$1913502239$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
-	public final fun getLambda$2003562529$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
-	public final fun getLambda$371221414$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
-	public final fun getLambda$650989920$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
-	public final fun getLambda$699003012$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
-	public final fun getLambda$917945033$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function3;
-	public final fun getLambda$925657493$io_github_asterx5_kotlinspect ()Lkotlin/jvm/functions/Function2;
-}
-

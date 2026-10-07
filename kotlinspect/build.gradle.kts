@@ -17,7 +17,14 @@ kotlin {
     explicitApi()
 
     @OptIn(org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation::class)
-    abiValidation()
+    abiValidation {
+        // Compose generates public synthetic classes for internal UI; they are not API.
+        filters {
+            exclude {
+                byNames.add("io.github.asterx5.kotlinspect.internal.**")
+            }
+        }
+    }
 
     iosArm64()
     iosSimulatorArm64()
@@ -50,7 +57,6 @@ kotlin {
             implementation(libs.room.runtime)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
-            implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.navigation3.ui)
         }

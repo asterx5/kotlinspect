@@ -116,6 +116,10 @@ class PureLogicTest {
         assertTrue(batch.isError)
     }
 
+    private fun RecordEntity.summary() = io.github.asterx5.kotlinspect.internal.db.RecordSummary(
+        id, sessionId, state, startedAt, durationMs, method, url, host, path, statusCode, requestBodySize, responseBodySize, error,
+    )
+
     @Test
     fun listFilters() {
         val records = listOf(
@@ -124,7 +128,7 @@ class PureLogicTest {
             record(path = "/post", method = "POST", status = 201),
             record(path = "/boom", status = null, state = CallState.Failed),
             record(path = "/wait", status = null, state = CallState.Pending),
-        )
+        ).map { it.summary() }
         assertEquals(listOf("/missing"), filterRecords(records, "", StatusFilter.ClientError, null).map { it.path })
         assertEquals(listOf("/boom"), filterRecords(records, "", StatusFilter.Failed, null).map { it.path })
         assertEquals(listOf("/wait"), filterRecords(records, "", StatusFilter.Pending, null).map { it.path })

@@ -115,30 +115,30 @@ public object Kotlinspect {
 
     /** Number of calls in the current session. */
     public val callCount: Flow<Int>
-        get() = currentSessionFlow { rt, id -> rt.database.records().observeCount(id) }.withDefault(0)
+        get() = currentSessionFlow { rt, id -> rt.database.records().observeCounts(id).map { it.total } }.withDefault(0)
 
     /** Number of calls in the current session that have not finished. */
     public val inFlightCount: Flow<Int>
-        get() = currentSessionFlow { rt, id -> rt.database.records().observeInFlight(id) }.withDefault(0)
+        get() = currentSessionFlow { rt, id -> rt.database.records().observeCounts(id).map { it.inFlight } }.withDefault(0)
 
     /** Number of failed calls and 4xx/5xx responses in the current session. */
     public val errorCount: Flow<Int>
-        get() = currentSessionFlow { rt, id -> rt.database.records().observeErrorCount(id) }.withDefault(0)
+        get() = currentSessionFlow { rt, id -> rt.database.records().observeCounts(id).map { it.errors } }.withDefault(0)
 
     /** The most recently started call in the current session, updated as it progresses. */
     public val latestCall: Flow<KotlinspectCall?>
-        get() = currentSessionFlow { rt, id -> rt.database.records().observeLatest(id).map { it?.toCall() } }
+        get() = currentSessionFlow { rt, id -> rt.database.records().observeLatestSummary(id).map { it?.toCall() } }
             .withDefault(null)
 
     /** Calls in the current session, newest first. */
     public val calls: Flow<List<KotlinspectCall>>
         get() = currentSessionFlow { rt, id ->
-            rt.database.records().observeSession(id).map { list -> list.map { it.toCall() } }
+            rt.database.records().observeSummaries(id).map { list -> list.map { it.toCall() } }
         }.withDefault(emptyList())
 
     /** Calls in the session with [sessionId], newest first. */
     public fun calls(sessionId: String): Flow<List<KotlinspectCall>> =
-        runtimeFlow { rt -> rt.database.records().observeSession(sessionId).map { list -> list.map { it.toCall() } } }
+        runtimeFlow { rt -> rt.database.records().observeSummaries(sessionId).map { list -> list.map { it.toCall() } } }
             .withDefault(emptyList())
 
     // endregion

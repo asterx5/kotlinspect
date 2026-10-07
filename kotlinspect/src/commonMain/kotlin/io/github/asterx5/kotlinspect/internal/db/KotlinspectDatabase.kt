@@ -26,6 +26,31 @@ internal interface RecordDao {
     @Query("SELECT * FROM records WHERE sessionId = :sessionId ORDER BY startedAt DESC")
     suspend fun forSession(sessionId: String): List<RecordEntity>
 
+    @Query(
+        "SELECT id, sessionId, state, startedAt, durationMs, method, url, host, path, statusCode, " +
+            "requestBodySize, responseBodySize, error FROM records WHERE sessionId = :sessionId ORDER BY startedAt DESC",
+    )
+    fun observeSummaries(sessionId: String): Flow<List<RecordSummary>>
+
+    @Query(
+        "SELECT id, sessionId, state, startedAt, durationMs, method, url, host, path, statusCode, " +
+            "requestBodySize, responseBodySize, error FROM records WHERE sessionId = :sessionId ORDER BY startedAt DESC LIMIT 1",
+    )
+    fun observeLatestSummary(sessionId: String): Flow<RecordSummary?>
+
+    @Query(
+        "SELECT COUNT(*) AS total, " +
+            "COALESCE(SUM(state = 'Pending'), 0) AS inFlight, " +
+            "COALESCE(SUM(state = 'Failed' OR COALESCE(statusCode, 0) >= 400), 0) AS errors, " +
+            "COALESCE(SUM(responseBodySize), 0) AS bytes, " +
+            "CAST(AVG(durationMs) AS INTEGER) AS avgMs " +
+            "FROM records WHERE sessionId = :sessionId",
+    )
+    fun observeCounts(sessionId: String): Flow<CallCounts>
+
+    @Query("SELECT sessionId, COUNT(*) AS calls FROM records GROUP BY sessionId")
+    fun observeSessionCounts(): Flow<List<SessionCount>>
+
     @Query("SELECT COUNT(*) FROM records WHERE sessionId = :sessionId")
     fun observeCount(sessionId: String): Flow<Int>
 

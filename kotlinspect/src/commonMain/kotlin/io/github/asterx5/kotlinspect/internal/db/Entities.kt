@@ -76,3 +76,34 @@ internal data class RecordSize(
     @ColumnInfo(name = "id") val id: String,
     @ColumnInfo(name = "storedBytes") val storedBytes: Long,
 )
+
+/** The columns the call list needs: everything except headers and bodies. */
+internal data class RecordSummary(
+    val id: String,
+    val sessionId: String,
+    val state: String,
+    val startedAt: Long,
+    val durationMs: Long?,
+    val method: String,
+    val url: String,
+    val host: String,
+    val path: String,
+    val statusCode: Int?,
+    val requestBodySize: Long?,
+    val responseBodySize: Long?,
+    val error: String?,
+)
+
+/** Aggregates for one session, computed in a single query. */
+internal data class CallCounts(
+    val total: Int = 0,
+    val inFlight: Int = 0,
+    val errors: Int = 0,
+    val bytes: Long = 0,
+    val avgMs: Long? = null,
+)
+
+internal data class SessionCount(
+    @ColumnInfo(name = "sessionId") val sessionId: String,
+    @ColumnInfo(name = "calls") val calls: Int,
+)

@@ -5,6 +5,7 @@ import io.github.asterx5.kotlinspect.KotlinspectCall
 import io.github.asterx5.kotlinspect.KotlinspectSession
 import io.github.asterx5.kotlinspect.RetentionPolicy
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
+import io.github.asterx5.kotlinspect.internal.db.RecordSummary
 import io.github.asterx5.kotlinspect.internal.db.SessionEntity
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -89,6 +90,28 @@ internal fun RecordEntity.toCall(): KotlinspectCall = KotlinspectCall(
     responseBodySize = responseBodySize,
     errorMessage = error,
 )
+
+internal fun RecordSummary.toCall(): KotlinspectCall = KotlinspectCall(
+    id = id,
+    sessionId = sessionId,
+    state = callState,
+    method = method,
+    url = url,
+    host = host,
+    path = path,
+    statusCode = statusCode,
+    startedAtMillis = startedAt,
+    durationMillis = durationMs,
+    requestBodySize = requestBodySize,
+    responseBodySize = responseBodySize,
+    errorMessage = error,
+)
+
+internal val RecordSummary.callState: CallState
+    get() = CallState.entries.firstOrNull { it.name == state } ?: CallState.Complete
+
+internal val RecordSummary.isError: Boolean
+    get() = callState == CallState.Failed || (statusCode ?: 0) >= 400
 
 internal val RecordEntity.callState: CallState
     get() = CallState.entries.firstOrNull { it.name == state } ?: CallState.Complete
