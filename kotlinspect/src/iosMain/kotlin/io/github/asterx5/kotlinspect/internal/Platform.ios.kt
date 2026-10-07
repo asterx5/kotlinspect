@@ -2,8 +2,8 @@
 
 package io.github.asterx5.kotlinspect.internal
 
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.collectAsState
@@ -12,7 +12,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.window.ComposeUIViewController
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -32,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import platform.CoreGraphics.CGAffineTransformMakeTranslation
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSFileManager
@@ -40,16 +40,16 @@ import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSUserDomainMask
 import platform.UIKit.UIApplication
 import platform.UIKit.UIColor
-import platform.UIKit.UIModalPresentationFullScreen
 import platform.UIKit.UISceneActivationStateForegroundActive
 import platform.UIKit.UISceneDidActivateNotification
-import platform.UIKit.UIViewController
+import platform.UIKit.UIView
 import platform.UIKit.UIWindow
 import platform.UIKit.UIWindowLevelAlert
 import platform.UIKit.UIWindowScene
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 import kotlin.experimental.ExperimentalNativeApi
+import kotlin.math.abs
 
 internal actual object Platform {
     actual val isReady: Boolean = true
@@ -85,22 +85,30 @@ internal actual object Platform {
 }
 
 /**
- * The bubble and toast each live in a small transparent window above the app, so touches
- * elsewhere reach the app untouched. The bubble window moves as it is dragged.
+ * The bubble, toast and inspector each live in their own window above the app. Nothing is
+ * presented on the app's view controllers, so the overlay works the same whatever the app's
+ * navigation looks like (SwiftUI, sheets, navigation stacks) and can never get stuck behind it.
  */
 private object IosOverlay {
     private var bubble: UIWindow? = null
     private var toast: UIWindow? = null
-    private var inspector: UIViewController? = null
+    private var toasts: ToastController? = null
+    private var inspector: UIWindow? = null
+    private var previousKeyWindow: UIWindow? = null
     private var pendingObserver: Any? = null
 
     private const val BUBBLE_POINTS = 72.0
     private const val TOAST_HEIGHT = 72.0
+    private const val MARGIN = 6.0
+    private const val DRAG_SLOP = 6.0
 
     private fun activeScene(): UIWindowScene? {
         val scenes = UIApplication.sharedApplication.connectedScenes.filterIsInstance<UIWindowScene>()
         return scenes.firstOrNull { it.activationState == UISceneActivationStateForegroundActive } ?: scenes.firstOrNull()
     }
+
+    private fun appWindows(scene: UIWindowScene): List<UIWindow> =
+        scene.windows.filterIsInstance<UIWindow>().filter { it !== bubble && it !== toast && it !== inspector }
 
     fun install(runtime: KotlinspectRuntime) {
         if (bubble != null) return
@@ -119,42 +127,57 @@ private object IosOverlay {
             }
             return
         }
-        val toasts = ToastController(runtime)
+        val controller = ToastController(runtime)
+        toasts = controller
         val (screenWidth, screenHeight) = scene.coordinateSpace.bounds.useContents { size.width to size.height }
 
         val bubbleWindow = UIWindow(windowScene = scene).apply {
-            setFrame(CGRectMake(screenWidth - BUBBLE_POINTS - 8, screenHeight * 0.7, BUBBLE_POINTS, BUBBLE_POINTS))
+            setFrame(CGRectMake(screenWidth - BUBBLE_POINTS - MARGIN, screenHeight * 0.7, BUBBLE_POINTS, BUBBLE_POINTS))
             windowLevel = UIWindowLevelAlert + 1
             backgroundColor = UIColor.clearColor
         }
         bubbleWindow.rootViewController = ComposeUIViewController(configure = { opaque = false }) {
             val counts by remember { runtime.bubbleCounts() }.collectAsState(BubbleCounts())
-            val density = LocalDensity.current.density
             KotlinspectTheme {
                 Box(
-                    Modifier
-                        .fillMaxSize()
-                        .pointerInput(Unit) { detectTapGestures { presentInspector(runtime) } }
-                        .pointerInput(Unit) {
-                            detectDragGestures { change, drag ->
-                                change.consume()
-                                moveBubble(bubbleWindow, drag.x / density, drag.y / density)
+                    Modifier.fillMaxSize().pointerInput(Unit) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            // Positions are converted to screen points: the window moves under the
+                            // finger, so local positions alone would cancel the drag out.
+                            val start = screenPoint(bubbleWindow, down.position.x / density, down.position.y / density)
+                            val startOrigin = origin(bubbleWindow)
+                            var dragged = false
+                            while (true) {
+                                val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                                if (!change.pressed) break
+                                val now = screenPoint(bubbleWindow, change.position.x / density, change.position.y / density)
+                                val dx = now.first - start.first
+                                val dy = now.second - start.second
+                                if (!dragged && (abs(dx) > DRAG_SLOP || abs(dy) > DRAG_SLOP)) dragged = true
+                                if (dragged) {
+                                    change.consume()
+                                    moveBubble(bubbleWindow, startOrigin.first + dx, startOrigin.second + dy)
+                                }
                             }
-                        },
+                            if (dragged) snapBubble(bubbleWindow) else presentInspector(runtime)
+                        }
+                    },
                     contentAlignment = Alignment.Center,
                 ) { BubbleContent(counts) }
             }
         }.apply { view.backgroundColor = UIColor.clearColor }
 
         val toastWindow = UIWindow(windowScene = scene).apply {
-            setFrame(CGRectMake(0.0, 50.0, screenWidth, TOAST_HEIGHT))
+            val top = appWindows(scene).firstOrNull()?.safeAreaInsets?.useContents { top } ?: 47.0
+            setFrame(CGRectMake(0.0, top + 4, screenWidth, TOAST_HEIGHT))
             windowLevel = UIWindowLevelAlert + 1
             backgroundColor = UIColor.clearColor
             userInteractionEnabled = false
             hidden = true
         }
         toastWindow.rootViewController = ComposeUIViewController(configure = { opaque = false }) {
-            val message by toasts.current.collectAsState()
+            val message by controller.current.collectAsState()
             KotlinspectTheme {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { message?.let { ToastCard(it) } }
             }
@@ -162,46 +185,95 @@ private object IosOverlay {
 
         bubble = bubbleWindow
         toast = toastWindow
+        snapBubble(bubbleWindow)
 
         runtime.scope.launch(Dispatchers.Main) {
-            combine(runtime.bubbleVisible, toasts.current) { visible, message -> visible to message }
-                .collectLatest { (visible, message) ->
-                    bubbleWindow.hidden = !(visible && runtime.config.enabled) || inspector != null
-                    toastWindow.hidden = message == null || inspector != null
-                }
+            combine(runtime.bubbleVisible, controller.current) { _, _ -> }.collectLatest { refresh(runtime) }
         }
     }
 
-    private fun moveBubble(window: UIWindow, dx: Float, dy: Float) {
-        val (x, y, w, h) = window.frame.useContents { listOf(origin.x, origin.y, size.width, size.height) }
-        window.setFrame(CGRectMake(x + dx, y + dy, w, h))
+    /** Shows or hides the bubble and toast from the current state; safe to call any time. */
+    private fun refresh(runtime: KotlinspectRuntime) {
+        val inspectorOpen = inspector != null
+        bubble?.hidden = !(runtime.bubbleVisible.value && runtime.config.enabled) || inspectorOpen
+        toast?.hidden = toasts?.current?.value == null || inspectorOpen
+    }
+
+    private fun origin(window: UIWindow): Pair<Double, Double> = window.frame.useContents { origin.x to origin.y }
+
+    private fun screenPoint(window: UIWindow, localX: Float, localY: Float): Pair<Double, Double> {
+        val (x, y) = origin(window)
+        return (x + localX) to (y + localY)
+    }
+
+    /** Area the bubble's top-left corner may occupy: the screen inside the safe area. */
+    private fun bubbleBounds(window: UIWindow): List<Double> {
+        val scene = window.windowScene
+        val (w, h) = (scene?.coordinateSpace?.bounds ?: window.bounds).useContents { size.width to size.height }
+        val insets = scene?.let { appWindows(it).firstOrNull() }?.safeAreaInsets
+        val top = insets?.useContents { top } ?: 0.0
+        val bottom = insets?.useContents { bottom } ?: 0.0
+        val left = insets?.useContents { left } ?: 0.0
+        val right = insets?.useContents { right } ?: 0.0
+        return listOf(
+            left + MARGIN,
+            top + MARGIN,
+            (w - right - BUBBLE_POINTS - MARGIN).coerceAtLeast(left + MARGIN),
+            (h - bottom - BUBBLE_POINTS - MARGIN).coerceAtLeast(top + MARGIN),
+        )
+    }
+
+    private fun moveBubble(window: UIWindow, x: Double, y: Double) {
+        val (minX, minY, maxX, maxY) = bubbleBounds(window)
+        window.setFrame(CGRectMake(x.coerceIn(minX, maxX), y.coerceIn(minY, maxY), BUBBLE_POINTS, BUBBLE_POINTS))
+    }
+
+    /** Moves the bubble to the nearest side, like on Android. */
+    private fun snapBubble(window: UIWindow) {
+        val (minX, minY, maxX, maxY) = bubbleBounds(window)
+        val (x, y) = origin(window)
+        val targetX = if (x - minX < maxX - x) minX else maxX
+        UIView.animateWithDuration(0.2) {
+            window.setFrame(CGRectMake(targetX, y.coerceIn(minY, maxY), BUBBLE_POINTS, BUBBLE_POINTS))
+        }
     }
 
     fun presentInspector(runtime: KotlinspectRuntime) {
         if (inspector != null) return
-        val host = topViewController() ?: return
-        lateinit var controller: UIViewController
-        controller = ComposeUIViewController {
-            InspectorApp(runtime, onClose = {
-                controller.dismissViewControllerAnimated(true) {
-                    inspector = null
-                    bubble?.hidden = !runtime.bubbleVisible.value
-                }
-            })
+        val scene = activeScene() ?: return
+        previousKeyWindow = appWindows(scene).firstOrNull { it.isKeyWindow() }
+        val height = scene.coordinateSpace.bounds.useContents { size.height }
+
+        val window = UIWindow(windowScene = scene).apply {
+            setFrame(scene.coordinateSpace.bounds)
+            windowLevel = UIWindowLevelAlert + 2
         }
-        controller.modalPresentationStyle = UIModalPresentationFullScreen
-        inspector = controller
-        bubble?.hidden = true
-        toast?.hidden = true
-        host.presentViewController(controller, animated = true, completion = null)
+        window.rootViewController = ComposeUIViewController {
+            InspectorApp(runtime, onClose = { closeInspector(runtime) })
+        }
+        inspector = window
+        refresh(runtime)
+
+        // Key window so the search field can receive the keyboard.
+        window.transform = CGAffineTransformMakeTranslation(0.0, height)
+        window.makeKeyAndVisible()
+        UIView.animateWithDuration(0.28) { window.transform = CGAffineTransformMakeTranslation(0.0, 0.0) }
     }
 
-    private fun topViewController(): UIViewController? {
-        val scene = activeScene() ?: return null
-        val windows = scene.windows.filterIsInstance<UIWindow>().filter { it !== bubble && it !== toast }
-        val window = windows.firstOrNull { it.isKeyWindow() } ?: windows.firstOrNull() ?: return null
-        var top = window.rootViewController ?: return null
-        while (true) top = top.presentedViewController ?: break
-        return top
+    private fun closeInspector(runtime: KotlinspectRuntime) {
+        val window = inspector ?: return
+        val height = window.bounds.useContents { size.height }
+        UIView.animateWithDuration(
+            duration = 0.25,
+            animations = { window.transform = CGAffineTransformMakeTranslation(0.0, height) },
+            completion = { _ ->
+                window.hidden = true
+                window.rootViewController = null
+                inspector = null
+                previousKeyWindow?.makeKeyWindow()
+                previousKeyWindow = null
+                refresh(runtime)
+            },
+        )
     }
 }
