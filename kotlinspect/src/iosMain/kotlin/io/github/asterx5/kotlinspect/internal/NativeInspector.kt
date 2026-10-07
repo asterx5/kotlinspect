@@ -8,6 +8,7 @@ import io.github.asterx5.kotlinspect.CallState
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
 import io.github.asterx5.kotlinspect.internal.db.RecordSummary
 import io.github.asterx5.kotlinspect.internal.db.SessionEntity
+import io.github.asterx5.kotlinspect.internal.ui.COMMON_METHODS
 import io.github.asterx5.kotlinspect.internal.ui.KsColors
 import io.github.asterx5.kotlinspect.internal.ui.StatusFilter
 import io.github.asterx5.kotlinspect.internal.ui.filterRecords
@@ -112,6 +113,7 @@ internal class NativeInspector(private val runtime: KotlinspectRuntime, private 
         val controller = UIViewController(nibName = null, bundle = null)
         private val table = UITableView(frame = CGRectMake(0.0, 0.0, 0.0, 0.0), style = UITableViewStyle.UITableViewStylePlain)
         private val filter = UISegmentedControl(items = StatusFilter.entries.map { it.label })
+        private val methodFilter = UISegmentedControl(items = listOf("Any") + COMMON_METHODS)
         private val stats = UILabel()
         private val empty = UILabel()
         private val search = UISearchController(searchResultsController = null)
@@ -141,12 +143,17 @@ internal class NativeInspector(private val runtime: KotlinspectRuntime, private 
             empty.textColor = UIColor.secondaryLabelColor
 
             // Header: status filter and stats line.
-            val header = UIView(frame = CGRectMake(0.0, 0.0, UIScreen.mainScreen.bounds.width(), 76.0))
+            val header = UIView(frame = CGRectMake(0.0, 0.0, UIScreen.mainScreen.bounds.width(), 116.0))
             filter.selectedSegmentIndex = 0
             filter.setFrame(CGRectMake(16.0, 8.0, UIScreen.mainScreen.bounds.width() - 32.0, 32.0))
             filter.autoresizingMask = platform.UIKit.UIViewAutoresizingFlexibleWidth
             filter.addAction(UIAction.actionWithHandler { _ -> refresh() }, forControlEvents = UIControlEventValueChanged)
-            stats.setFrame(CGRectMake(16.0, 46.0, UIScreen.mainScreen.bounds.width() - 32.0, 22.0))
+            methodFilter.selectedSegmentIndex = 0
+            methodFilter.setFrame(CGRectMake(16.0, 46.0, UIScreen.mainScreen.bounds.width() - 32.0, 32.0))
+            methodFilter.autoresizingMask = platform.UIKit.UIViewAutoresizingFlexibleWidth
+            methodFilter.addAction(UIAction.actionWithHandler { _ -> refresh() }, forControlEvents = UIControlEventValueChanged)
+            header.addSubview(methodFilter)
+            stats.setFrame(CGRectMake(16.0, 86.0, UIScreen.mainScreen.bounds.width() - 32.0, 22.0))
             stats.autoresizingMask = platform.UIKit.UIViewAutoresizingFlexibleWidth
             stats.font = UIFont.monospacedSystemFontOfSize(12.0, UIFontWeightMedium)
             stats.textColor = UIColor.secondaryLabelColor
@@ -226,7 +233,8 @@ internal class NativeInspector(private val runtime: KotlinspectRuntime, private 
 
         fun refresh() {
             val status = StatusFilter.entries.getOrElse(filter.selectedSegmentIndex.toInt()) { StatusFilter.All }
-            shown = filterRecords(all, query, status, method = null)
+            val method = COMMON_METHODS.getOrNull(methodFilter.selectedSegmentIndex.toInt() - 1)
+            shown = filterRecords(all, query, status, method)
             val errors = all.count { it.callState == CallState.Failed || (it.statusCode ?: 0) >= 400 }
             val done = all.mapNotNull { it.durationMs }
             stats.text = "${all.size} calls  ·  $errors errors  ·  ${formatBytes(all.sumOf { it.responseBodySize ?: 0 })}" +

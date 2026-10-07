@@ -103,6 +103,9 @@ internal class CallListState {
     var sessionsOpen: Boolean by mutableStateOf(false)
 }
 
+/** Method filters shown in both inspectors, before any other methods seen in the session. */
+internal val COMMON_METHODS: List<String> = listOf("GET", "POST", "PUT", "PATCH", "DELETE")
+
 internal fun filterRecords(records: List<RecordSummary>, query: String, status: StatusFilter, method: String?): List<RecordSummary> {
     val q = query.trim()
     return records.filter { r ->
@@ -175,7 +178,8 @@ private fun CallListScreen(runtime: KotlinspectRuntime, state: CallListState, on
         filterRecords(records, state.query, state.status, state.method)
     }
     val statusCounts = remember(records) { StatusFilter.entries.associateWith { f -> records.count(f::matches) } }
-    val methods = remember(records) { records.map { it.method }.distinct().sorted() }
+    val methodCounts = remember(records) { records.groupingBy { it.method.uppercase() }.eachCount() }
+    val methods = remember(methodCounts) { COMMON_METHODS + (methodCounts.keys - COMMON_METHODS.toSet()).sorted() }
     val maxDuration = remember(records) { records.maxOfOrNull { it.durationMs ?: 0 } ?: 0 }
 
     Box(Modifier.fillMaxSize()) {
@@ -206,7 +210,7 @@ private fun CallListScreen(runtime: KotlinspectRuntime, state: CallListState, on
             StatsStrip(records, Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
             SearchField(state.query, { state.query = it }, "Filter by URL, method or status", Modifier.padding(horizontal = 16.dp))
             Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 10.dp),
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -216,10 +220,17 @@ private fun CallListScreen(runtime: KotlinspectRuntime, state: CallListState, on
                         Chip(f.label, state.status == f, count, tint = filterTint(f, c)) { state.status = f }
                     }
                 }
-                if (methods.size > 1) {
-                    Box(Modifier.width(1.dp).height(20.dp).background(c.line))
-                    methods.forEach { m ->
-                        Chip(m, state.method == m, tint = c.methodColor(m)) { state.method = if (state.method == m) null else m }
+            }
+            // Method filters are always shown so they are easy to find.
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Chip("Any method", state.method == null) { state.method = null }
+                methods.forEach { m ->
+                    Chip(m, state.method == m, methodCounts[m] ?: 0, tint = c.methodColor(m)) {
+                        state.method = if (state.method == m) null else m
                     }
                 }
             }

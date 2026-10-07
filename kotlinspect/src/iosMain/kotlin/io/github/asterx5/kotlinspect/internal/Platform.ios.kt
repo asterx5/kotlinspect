@@ -31,7 +31,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import platform.CoreGraphics.CGAffineTransformMakeTranslation
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSFileManager
@@ -42,11 +41,20 @@ import platform.UIKit.UIApplication
 import platform.UIKit.UIColor
 import platform.UIKit.UISceneActivationStateForegroundActive
 import platform.UIKit.UISceneDidActivateNotification
+import platform.UIKit.UIAdaptivePresentationControllerDelegateProtocol
+import platform.UIKit.UIModalPresentationPageSheet
+import platform.UIKit.UIPresentationController
 import platform.UIKit.UIView
+import platform.UIKit.UIViewController
+import platform.UIKit.presentationController
 import platform.UIKit.UIWindow
 import platform.UIKit.UIWindowLevelAlert
 import platform.UIKit.UIWindowScene
+import platform.darwin.DISPATCH_TIME_NOW
+import platform.darwin.NSObject
+import platform.darwin.dispatch_after
 import platform.darwin.dispatch_async
+import platform.darwin.dispatch_time
 import platform.darwin.dispatch_get_main_queue
 import kotlin.experimental.ExperimentalNativeApi
 import kotlin.math.abs
@@ -243,42 +251,70 @@ private object IosOverlay {
         if (inspector != null) return
         val scene = activeScene() ?: return
         previousKeyWindow = appWindows(scene).firstOrNull { it.isKeyWindow() }
-        val height = scene.coordinateSpace.bounds.useContents { size.height }
 
+        // A transparent host in our own window; the inspector is presented on it as a standard
+        // sheet. No window transforms: UIKit does not reliably animate a window's transform,
+        // which left the inspector off screen until the app was backgrounded.
+        val host = UIViewController(nibName = null, bundle = null).apply { view.backgroundColor = UIColor.clearColor }
         val window = UIWindow(windowScene = scene).apply {
             setFrame(scene.coordinateSpace.bounds)
             windowLevel = UIWindowLevelAlert + 2
+            backgroundColor = UIColor.clearColor
+            rootViewController = host
         }
-        window.rootViewController = if (NativeInspector.isSupported()) {
+        val content = if (NativeInspector.isSupported()) {
             NativeInspector(runtime, onClose = { closeInspector(runtime) }).also { native = it }.root
         } else {
             ComposeUIViewController { InspectorApp(runtime, onClose = { closeInspector(runtime) }) }
         }
+        content.modalPresentationStyle = UIModalPresentationPageSheet
+        content.presentationController?.delegate = dismissDelegate
+        activeRuntime = runtime
         inspector = window
         refresh(runtime)
-
         // Key window so the search field can receive the keyboard.
-        window.transform = CGAffineTransformMakeTranslation(0.0, height)
         window.makeKeyAndVisible()
-        UIView.animateWithDuration(0.28) { window.transform = CGAffineTransformMakeTranslation(0.0, 0.0) }
+
+        // Present on the next run loop turn: the host is then in the window hierarchy, and we are
+        // no longer inside the bubble's touch handling.
+        dispatch_async(dispatch_get_main_queue()) {
+            host.presentViewController(content, animated = true, completion = null)
+            // Safety net: if UIKit refused to present, do not leave an empty window and a hidden bubble.
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1_000_000_000L), dispatch_get_main_queue()) {
+                if (inspector === window && host.presentedViewController == null) teardown(runtime)
+            }
+        }
     }
 
     private fun closeInspector(runtime: KotlinspectRuntime) {
+        val presented = inspector?.rootViewController?.presentedViewController
+        if (presented != null) {
+            presented.dismissViewControllerAnimated(true) { teardown(runtime) }
+        } else {
+            teardown(runtime)
+        }
+    }
+
+    /** Removes the inspector window and restores the app's key window and the bubble. */
+    private fun teardown(runtime: KotlinspectRuntime) {
         val window = inspector ?: return
-        val height = window.bounds.useContents { size.height }
-        UIView.animateWithDuration(
-            duration = 0.25,
-            animations = { window.transform = CGAffineTransformMakeTranslation(0.0, height) },
-            completion = { _ ->
-                window.hidden = true
-                window.rootViewController = null
-                native?.dispose()
-                native = null
-                inspector = null
-                previousKeyWindow?.makeKeyWindow()
-                previousKeyWindow = null
-                refresh(runtime)
-            },
-        )
+        window.hidden = true
+        window.rootViewController = null
+        native?.dispose()
+        native = null
+        inspector = null
+        activeRuntime = null
+        previousKeyWindow?.makeKeyWindow()
+        previousKeyWindow = null
+        refresh(runtime)
+    }
+
+    private var activeRuntime: KotlinspectRuntime? = null
+
+    /** Handles the user swiping the sheet down. */
+    private val dismissDelegate = object : NSObject(), UIAdaptivePresentationControllerDelegateProtocol {
+        override fun presentationControllerDidDismiss(presentationController: UIPresentationController) {
+            activeRuntime?.let(::teardown)
+        }
     }
 }
