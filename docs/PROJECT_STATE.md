@@ -1,6 +1,6 @@
 # Kotlinspect: Project State
 
-*Snapshot as of 2026-10-22, release `1.0.0-beta07`. Written to bring a new collaborator (human or
+*Snapshot as of 2026-10-23, release `1.0.0-beta12`. Written to bring a new collaborator (human or
 agent) fully up to speed: what exists, how it is built, why it is built that way, what is
 verified, and what comes next.*
 
@@ -18,7 +18,8 @@ the platform way and appear in the inspector's **Logs** tab.
 
 - **Repo:** https://github.com/asterx5/kotlinspect (public, Apache 2.0)
 - **Maven Central:** `io.github.asterx5:kotlinspect`, `io.github.asterx5:kotlinspect-core` and `io.github.asterx5:kotlog`
-- **Latest:** `1.0.0-beta07` (uploaded to Central; the owner clicks Publish, then the `v1.0.0-beta07` tag creates the GitHub release)
+- **Latest:** `1.0.0-beta12` (published on Central, GitHub release marked Latest). The owner reports it
+  **stable** in their own Compose Multiplatform app on Android, iPhone and desktop.
 - **Owner:** Ahmed (GitHub `asterx5`). Built with Claude Code on Windows.
 
 The goal set by the owner: **become the go-to network inspector for KMP**, usable whether or not
@@ -32,17 +33,18 @@ the app uses Compose, with zero setup and zero risk in release builds.
 |---|---|
 | Capture (Ktor plugin) | Done, tested |
 | Storage (Room), sessions, retention | Done, tested |
-| Compose UI: bubble, toast, inspector (Android, desktop, CMP iOS) | Done, verified on Android emulator |
-| Native iOS inspector (UIKit) | Done, ran on the owner's iPhone (beta03); beta04 sheet presentation not yet confirmed |
-| Native iOS bubble, toast, overlay view (beta05) | Done, **compiles, never run on a device** |
+| Compose UI: bubble, toast, inspector (Android, desktop, CMP iOS) | Done. Verified on the Android emulator and an Android phone (English and Arabic/RTL); owner reports stable on Android, desktop and iPhone at beta12 |
+| Native iOS inspector (UIKit) | Done. Used in the owner's CMP app on iPhone (beta09–12, run from a friend's Mac); not checked feature by feature |
+| Native iOS automatic overlay window (bubble, toast) | Done. Ran on iPhone; beta10 fixed the app taking no taps |
 | Placeable overlays + session scoping | Done, verified on Android |
 | Kotlog (`KtLog`) + Logs tab + bubble log count, Compose | Done, tested, verified on Android emulator (beta07) |
-| Logs tab + bubble log count, native iOS (UIKit) | Done (beta07), **compiles, never run on a device** |
+| Logs tab + bubble log count, native iOS (UIKit) | Done (beta07). In the owner's iPhone app since beta09; not checked feature by feature |
 | `KotlinspectSwiftUI` Swift package | Done, **never compiled** (no Mac available) |
 | Minimum-version dependency floors | Done, verified with an old-toolchain Android app |
-| Publishing to Maven Central | Working (manual) |
+| Publishing to Maven Central | Working (manual). Free tier limit of about 1,000 files a month (see section 10) |
 | GitHub releases | Automated by a workflow on tag push |
 | AI agent skill | Published as `kotlinspect-skill.zip` on every release |
+| Binary compatibility with newer Compose | Checked by hand before releases since beta09/beta11 (section 9); not automated |
 | CI for tests | **Not yet** |
 
 ---
@@ -57,7 +59,12 @@ the app uses Compose, with zero setup and zero risk in release builds.
 | beta04 | iOS inspector as a sheet (fixed "opens then vanishes"), method filter row | yes |
 | beta05 | Split into `kotlinspect-core` + `kotlinspect`, native iOS bubble/toast, placeable overlays with session scoping, Swift package, oldest-compatible dependency floors | yes |
 | beta06 | Kotlog (`KtLog`, new `kotlog` artifact), Compose Logs tab with tag/layer/level filters, bubble log count, database v2 migration | yes |
-| beta07 | Native iOS Logs tab and bubble log count (parity with Compose), sample KtLog demo, Kotlog docs and skill | uploaded, Publish pending |
+| beta07 | Native iOS Logs tab and bubble log count (parity with Compose), sample KtLog demo, Kotlog docs and skill | yes |
+| beta08 | iOS crash on the first `KtLog` call (`NSLog` vararg) | **no** (dropped; folded into beta09) |
+| beta09 | `IrLinkageError` on Compose iOS with newer Compose (`$stable` fields); includes the beta08 fix | yes |
+| beta10 | iPhone apps took no taps (overlay window); no automatic window with `automatic = false` | yes |
+| beta11 | Desktop `NoSuchMethodError` on newer Compose (`safeDrawing`); bubble anchored to an edge from the first frame; RTL mirroring; Compose log filters as dropdowns | yes |
+| beta12 | RTL: Compose bubble was off screen since beta11 | yes |
 
 Detailed notes per version live in [`CHANGELOG.md`](../CHANGELOG.md).
 
@@ -217,6 +224,21 @@ written once and used by both the Compose and the UIKit UIs.
   (UIKit, also used by the Swift package). A placed overlay registers itself with the host; while
   any is on screen, the automatic one hides. `bubble { automatic = false }` disables it entirely.
 - A `sessionId` scopes bubble counts, toasts and which session the inspector opens on.
+- iOS automatic window (`PassthroughWindow`): it claims touches only inside the bubble, in
+  `pointInside` (a `hitTest` returning null was not enough; iPhone apps took no taps, beta10). It is
+  not created at all with `bubble { automatic = false }`; the internal `Platform.onConfigChanged`
+  hook installs or removes it when `configure` changes that setting at runtime.
+
+**Compose bubble placement.** The resting place is an **anchor** (left or right edge plus a fraction
+of the height, default right edge at 70%), not pixels, so it follows any size change: a desktop
+window laid out before its final size, rotation, split screen. Pixels are tracked only while
+dragging, then it snaps to the nearest edge. It is placed with `absoluteOffset` inside a Box
+aligned to `AbsoluteAlignment.TopLeft`, so right-to-left apps (Arabic, Hebrew) neither mirror the
+drag (beta11) nor push the bubble off screen (beta12).
+
+**Safe area.** expect/actual `Modifier.safeAreaPadding()` (`SafeArea.kt`): Android and iOS use
+`WindowInsets.safeDrawing`; desktop pads nothing. Desktop must not touch `safeDrawing`, whose JVM
+file class moved in newer Compose (beta11).
 
 **Inspector.**
 - Compose: list screen (session header, stats strip, search, status chips on one row, method chips
@@ -224,8 +246,14 @@ written once and used by both the Compose and the UIKit UIs.
   timing, header tables, JSON highlighting with line numbers rendered lazily). Navigation is a
   small internal two-screen back stack (Navigation 3 was removed; see decisions). Android runs it in
   `KotlinspectActivity`, desktop in its own window.
-- iOS: native UIKit (`NativeInspector`): navigation controller, searchable table, status and method
-  segmented controls, sessions menu, copy menu, attributed-text detail. Presented as a page sheet
+- Logs tab (Compose, `LogsScreen.kt`): search plus Level, Tags and Layers **dropdown pills**
+  ("Tags ▾", "Tags · 2 ▾") opening a menu of values present with counts, check marks and Clear. The
+  menu is a plain `Popup` in the inspector's style (no Material 3), stays open for multi-select, and
+  closes on outside tap or back. `FilterMenuPanel` renders the contents. Filters with a single value
+  are hidden. Same model as the native iOS menus.
+- iOS: native UIKit (`NativeInspector`): navigation controller, Network/Logs switch, searchable
+  tables, status and method segmented controls, Level/Tags/Layers menus, sessions menu, copy menu,
+  attributed-text detail. Presented as a page sheet
   on a transparent host in its own window (avoids depending on the app's view controllers, which
   broke in SwiftUI apps). iOS 14+.
 
@@ -324,7 +352,8 @@ Removed on purpose: **Navigation 3** (forced Compose 1.10 + Kotlin 2.2.20 for tw
 
 ## 9. Testing and verification
 
-**Automated** (`./gradlew :kotlinspect-core:jvmTest`): **48 tests**, run against the floor versions.
+**Automated** (`./gradlew :kotlinspect-core:jvmTest :kotlog:jvmTest`): **55 + 6 tests**, run against the floor versions.
+The Compose module has no automated tests.
 
 | Suite | Covers |
 |---|---|
@@ -335,17 +364,32 @@ Removed on purpose: **Navigation 3** (forced Compose 1.10 + Kotlin 2.2.20 for tw
 | DisabledStateTest | release gating, `allowInRelease`, master switch, **no database file created**, safe no-op API |
 | OverlayModelTest | session-scoped counts and toasts, embedded overlay hides automatic, `automatic = false` |
 | PureLogicTest | endpoint keys, fingerprints, content types, buffers, retention codec, JSON, cURL, toasts, filters |
+| LogTest | log storage order, KtLog end to end, clear/delete with the session, trimming, disabled, bubble counts |
+| MigrationTest | a version-1 database (built from the exported schema) opens as version 2 with its data |
+| KtLogTest (kotlog) | levels, layers, console text, sinks, sink failures swallowed |
 
-**ABI:** `./gradlew checkKotlinAbi` for both modules.
+**ABI:** `./gradlew checkKotlinAbi` for all three modules.
+
+**Binary compatibility with newer dependencies** (by hand, before each release). The library is
+compiled against old floors but runs on whatever newer versions the app uses; a mismatch only shows
+at run time, and the sample app (which builds the library from Maven Local against the latest
+versions) does not catch it.
+- iOS: `klib dump-ir-signatures` on the kotlinspect iOS klib. `$stable` entries must all be
+  `io.github.asterx5`; every imported `androidx.compose` signature must exist in the current
+  Compose klibs (inherited members excepted). kotlinspect-core was checked the same way against
+  the newest Ktor, coroutines, serialization and Room.
+- Desktop: scan the jvm jar's references to `androidx/compose` methods and fields against a current
+  Compose desktop classpath (done for 1.12 in beta11).
 
 **Manual, on the Android emulator:** every call type in the sample, bubble/toast/inspector, filters,
 redaction, sessions, release build disabled, scrolling at ~60 fps in a debug build, the old-toolchain
 consumer app (Kotlin 2.1.20 / AGP 8.7 / Compose 1.7 / Ktor 3.0) building, resolving to its own
 versions and running, and all overlay modes (automatic, in layout, session-scoped, back to automatic).
 
-**Owner-tested on real devices:** Android and desktop (Windows and macOS) work well. iPhone on
-beta03: bubble movement confirmed, but the inspector opened and then vanished until the app was
-backgrounded. beta04's sheet presentation is the fix for that and has not been confirmed yet.
+**Owner-tested on real devices:** at beta12 the owner reports Kotlinspect stable in their own Compose
+Multiplatform app (Koin, Material 3, a recent Compose, Arabic and English) on Android, iPhone (built on a
+friend's Mac) and desktop. The beta08–beta12 fixes all came from that testing. An Android phone was
+also checked in Arabic and English for beta12 (bubble rests on the right edge, drags to the left).
 
 ---
 
@@ -368,12 +412,21 @@ framework or running iOS needs a Mac.
 1. Bump `kotlinspect.version` in `gradle.properties` and the sample entry in `libs.versions.toml`;
    update README version mentions and add a `CHANGELOG.md` section with the exact version heading.
 2. Run tests, ABI check, publish to Maven Local, build the sample.
-3. Upload: `./gradlew :kotlinspect-core:publishToMavenCentral :kotlinspect:publishToMavenCentral --no-configuration-cache`.
-   Both modules land in **one** deployment.
+3. Upload: `./gradlew :kotlog:publishToMavenCentral :kotlinspect-core:publishToMavenCentral :kotlinspect:publishToMavenCentral --no-configuration-cache`.
+   All three modules land in **one** deployment (`io.github.asterx5-<version>`).
 4. Owner signs in to https://central.sonatype.com **with GitHub** (that account owns the uploads)
    → Publish → Deployments → Publish. Versions are permanent.
 5. Commit, then `git tag -a vX.Y.Z` and push the tag. The release workflow creates the GitHub
    release (notes from the changelog, install lines, skill zip) and marks it Latest.
+
+**Publishing limits.** Maven Central counts files per calendar month per organization; the free
+threshold shown to the owner is about **1,000 files a month**. One Kotlinspect release is roughly
+**330 files** (3 artifacts × 5 targets, each with jars/klibs, sources, javadoc, pom, module,
+signatures and checksums), so about **2–3 releases a month** fit. October 2026 used 2,320, which
+started a 30-day grace period ending **2026-11-21**; after it, uploads that would keep a month over
+the limit are refused until the next month. Group changes into fewer releases, test with
+`publishToMavenLocal`, and drop (don't publish) deployments that are not wanted. Community
+projects can ask Sonatype for a higher limit.
 
 **Credentials** (never in the repo): Central user token and the GPG signing key live in
 `C:\Users\11\.gradle\gradle.properties`, written by `scripts/setup-maven-central.sh`. Signing key
@@ -405,20 +458,22 @@ verified on the GitHub-login Central account.
 ## 12. Known gaps, risks and gotchas
 
 **Not verified yet (needs a Mac / iPhone):**
-- beta05 native iOS bubble, toast and `OverlayView` (drag, tap, pass-through touches, toast animation).
-- beta07 native iOS Logs tab (filter menus, self-sizing log rows, log detail) and the bubble log pill.
+- A SwiftUI or UIKit app using only `kotlinspect-core` (the owner's iPhone app is Compose
+  Multiplatform), including `KotlinspectUIKit.makeOverlayView`.
+- The native iOS screens checked feature by feature (Logs menus, log detail, copy actions); they
+  run in the owner's app but nobody has gone through them systematically.
 - Calling `KtLog` from Swift (`KtLog.shared.d(tag:message:layer:)`) with `kotlog` exported.
 - The `KotlinspectSwiftUI` package (never compiled). It relies on the selectors
   `shared`, `makeOverlayViewSessionId:`, `openInspectorSessionId:`.
 - An iOS app on Kotlin 2.1.x consuming the klibs (Android/JVM floors are verified).
-- Desktop overlay after the module split (compiles; not watched running).
 
 **Limitations:**
 - Ktor only. Retrofit/OkHttp-only Android apps capture nothing yet.
 - Swift needs the app framework to `export` `kotlinspect-core` (and `kotlog` to call `KtLog`).
 - Native iOS log filter menus close after each pick (keeping them open needs iOS 16).
 - Native iOS UI needs iOS 14.
-- No CI: tests and ABI checks run only locally.
+- No CI: tests, ABI checks and the binary-compatibility scans run only locally, by hand.
+- Maven Central file limit: about 2–3 releases a month (section 10).
 
 **Gotchas met during development:**
 - Python on this Windows machine defaults to cp1252; always pass `encoding='utf-8'` in scripts
@@ -457,8 +512,10 @@ verified on the GitHub-login Central account.
 
 Suggested order:
 
-1. **Verify on iPhone**: the inspector sheet (beta04 fix), native bubble/toast/overlay, the beta07 Logs tab and log pill, Swift package, SwiftUI export setup, `KtLog` from Swift.
-2. **CI workflow:** run `jvmTest` and `checkKotlinAbi` on pushes; build iOS klibs on a macOS runner.
+1. **Verify on iPhone** what the owner's Compose app does not exercise: a SwiftUI/UIKit app on `kotlinspect-core`, the Swift package, `KtLog` from Swift, and a pass through the native screens.
+2. **CI workflow:** run `jvmTest` and `checkKotlinAbi` on pushes; automate the two binary-compatibility
+   scans (iOS klib against current Compose klibs, desktop jar against the current Compose classpath);
+   link and smoke-run the iOS sample on a macOS runner, which would have caught beta08–beta10.
 3. **Android-only reach:**
    - OkHttp/Retrofit interceptor feeding the same store and UI.
    - `kotlinspect-no-op` artifact for `releaseImplementation`, so the code is not shipped in release APKs.
