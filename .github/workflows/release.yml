@@ -1,0 +1,55 @@
+# Creates the GitHub release for a version tag (v1.2.3, v1.0.0-beta05...): notes from that
+# version's CHANGELOG.md section, and the agent skill attached as kotlinspect-skill.zip.
+# Maven Central publishing stays a manual step (see README).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)create the release for, e.g. v1.0.0-beta05"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Release notes and skill archive
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+          awk -v v="$VERSION" '$0 == "## " v { found = 1; next } /^## / { if (found) exit } found' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "No CHANGELOG.md section for $VERSION"; exit 1; fi
+          {
+            echo
+            echo "### Install"
+            echo
+            echo '```kotlin'
+            echo "implementation(\"io.github.asterx5:kotlinspect:$VERSION\")        // with Compose UI"
+            echo "implementation(\"io.github.asterx5:kotlinspect-core:$VERSION\")   // no Compose (SwiftUI/UIKit iOS)"
+            echo '```'
+            echo
+            echo "**For AI agents:** download \`kotlinspect-skill.zip\` below and unzip it into your agent's skills folder (for Claude Code: \`~/.claude/skills/\`)."
+          } >> notes.md
+
+          (cd skills && zip -r ../kotlinspect-skill.zip kotlinspect)
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Kotlinspect ${{ env.VERSION }}
+          body_path: notes.md
+          files: kotlinspect-skill.zip
+          make_latest: true

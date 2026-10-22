@@ -14,6 +14,18 @@ A network inspector for Kotlin Multiplatform apps that use Ktor. Add one depende
 - **UI**: a draggable bubble (count, in-flight ring, error tint), toasts, and an inspector with search, filters, pretty-printed JSON and *Copy as cURL*.
 - **API**: observe counts and calls as `Flow`s to build your own indicators.
 
+## For AI agents
+
+A ready-made skill teaches coding agents (Claude Code, and other agents that read `SKILL.md`
+skills) how to add Kotlinspect to a project: picking the right artifact, adding the dependency in
+the right module, installing the plugin, and the iOS-without-Compose setup.
+
+- **Download:** [`kotlinspect-skill.zip`](https://github.com/asterx5/kotlinspect/releases/latest/download/kotlinspect-skill.zip) from the latest release.
+- **Install for Claude Code:** unzip it into `~/.claude/skills/` (all your projects) or `.claude/skills/` in one project, so you get `skills/kotlinspect/SKILL.md`.
+- Then ask the agent something like *"add Kotlinspect to this app so I can see its network calls"*.
+
+The skill's source is in [`skills/kotlinspect`](skills/kotlinspect).
+
 ## Installation
 
 Kotlinspect comes in two artifacts:
