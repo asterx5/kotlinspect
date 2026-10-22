@@ -2,6 +2,10 @@
 
 All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 
+## 1.0.0-beta08
+
+- Fix: on iOS, the first `KtLog` call crashed the app (`EXC_BAD_ACCESS` in `NSLog`). Kotlog passed the text as a `%@` argument, which Kotlin/Native does not turn into an `NSString`. It now passes the text as the format with `%` escaped. If you set `KtLog.consoleEnabled = false` to work around this, you can remove it.
+
 ## 1.0.0-beta07
 
 - Native iOS (UIKit) inspector gets the **Logs** tab: a Network/Logs switch at the top, message

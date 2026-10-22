@@ -12,5 +12,8 @@ internal actual fun currentTimeMillis(): Long = (NSDate().timeIntervalSince1970 
 /** NSLog, so entries show in Xcode and in the device's Console app. */
 internal actual fun printToPlatform(level: LogLevel, tag: String, message: String, layer: String?, throwable: Throwable?) {
     val text = "${level.letter}/$tag: ${consoleText(message, layer)}" + (throwable?.let { "\n" + it.stackTraceToString() } ?: "")
-    NSLog("%@", text)
+    // The text goes in as the format itself, with % escaped. Kotlin/Native bridges a String to
+    // NSString only for the fixed format parameter: passed as a C vararg for "%@" it is not an
+    // object, and NSLog crashes reading it.
+    NSLog(text.replace("%", "%%"))
 }
