@@ -39,6 +39,7 @@ jobs:
             echo '```kotlin'
             echo "implementation(\"io.github.asterx5:kotlinspect:$VERSION\")        // with Compose UI"
             echo "implementation(\"io.github.asterx5:kotlinspect-core:$VERSION\")   // no Compose (SwiftUI/UIKit iOS)"
+            echo "implementation(\"io.github.asterx5:kotlog:$VERSION\")              // KtLog only, for modules that just log"
             echo '```'
             echo
             echo "**For AI agents:** download \`kotlinspect-skill.zip\` below and unzip it into your agent's skills folder (for Claude Code: \`~/.claude/skills/\`)."
