@@ -20,16 +20,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -117,7 +114,7 @@ internal fun InspectorApp(host: KotlinspectHost, initialSessionId: String? = nul
             if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) else onClose()
         }
         PlatformBackHandler(onBack = goBack)
-        Box(Modifier.fillMaxSize().background(Ks.colors.bg).windowInsetsPadding(WindowInsets.safeDrawing)) {
+        Box(Modifier.fillMaxSize().background(Ks.colors.bg).safeAreaPadding()) {
             AnimatedContent(
                 targetState = backStack.size to backStack.last(),
                 transitionSpec = {

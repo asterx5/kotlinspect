@@ -2,6 +2,10 @@
 
 All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 
+## 1.0.0-beta11
+
+- Fix: on desktop, apps on a newer Compose than 1.7 (for example 1.11 or 1.12) crashed as soon as the bubble or the inspector composed, with `NoSuchMethodError: WindowInsets_notMobileKt.getSafeDrawing`. Kotlinspect is compiled against the Compose 1.7 floor, where `WindowInsets.safeDrawing` on desktop lived in a JVM class that newer Compose moved. The safe-area padding is now chosen per platform: Android and iOS still use `safeDrawing`, and desktop, which has no system insets inside its window, pads nothing. A scan of the desktop jar against Compose 1.12 finds no other missing Compose method.
+
 ## 1.0.0-beta10
 
 - Fix: on iPhone, an app using Kotlinspect took no taps at all, from launch. The automatic iOS overlay is a window above the app that is meant to let touches through everywhere except the bubble; it relied on `hitTest` returning nothing, which did not pass taps on to the app. The window now claims only the bubble's own area (`pointInside`), so UIKit skips it for every other touch.

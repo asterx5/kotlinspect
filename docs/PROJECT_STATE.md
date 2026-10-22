@@ -436,6 +436,13 @@ verified on the GitHub-login Central account.
   apps on new Compose crash with `IrLinkageError` (beta09 fix). Android/JVM are unaffected. Check
   after UI changes: `klib dump-ir-signatures <kotlinspect iOS klib> | grep '\$stable'` must list only
   `io.github.asterx5` entries.
+- **Desktop links Compose by JVM class, not by name.** A top-level Compose API is reached through
+  its file's JVM class (`WindowInsets.safeDrawing` lives in `WindowInsets_notMobileKt`), and newer
+  Compose moves such declarations between files. Built against the 1.7 floor, the desktop jar then
+  throws `NoSuchMethodError` in apps on new Compose (beta11 fix). The library's own desktop sample
+  compiles from source, so it cannot catch this. Before a release, scan the published-shape jvm jar
+  against a current Compose desktop classpath for every `androidx/compose` method and field it
+  references, and keep platform-specific Compose APIs (insets, window, AWT) behind expect/actual.
 - **iOS overlay windows must refuse touches in `pointInside`.** A `hitTest` that returns null for
   everything but the bubble still left iPhone apps taking no taps (beta10 fix). The automatic
   window claims only the bubble's area, and is not created at all with `bubble { automatic = false }`.
