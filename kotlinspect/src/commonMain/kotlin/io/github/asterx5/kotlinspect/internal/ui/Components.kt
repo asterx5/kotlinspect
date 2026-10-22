@@ -1,11 +1,5 @@
 package io.github.asterx5.kotlinspect.internal.ui
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,6 +19,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -197,16 +195,23 @@ internal fun SectionLabel(text: String, modifier: Modifier = Modifier, trailing:
     }
 }
 
-/** Rotating arc used for in-flight indicators. Cheaper than a Material progress indicator. */
+/**
+ * Rotating arc used for in-flight indicators. Cheaper than a Material progress indicator.
+ * Driven by frame callbacks instead of an infinite transition: passing InfiniteTransition or
+ * InfiniteRepeatableSpec to animation functions fails to link on iOS against newer Compose
+ * (see [Ks]).
+ */
 @Composable
 internal fun Spinner(color: Color, size: Dp, stroke: Dp = 2.dp, modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition()
-    val angle by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Restart),
-    )
-    Canvas(modifier.size(size).graphicsLayer { rotationZ = angle }) {
+    val angle = remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) {
+        val start = withFrameNanos { it }
+        while (true) {
+            withFrameNanos { now -> angle.floatValue = ((now - start) / 1_000_000L % SPIN_MS) * 360f / SPIN_MS }
+        }
+    }
+    // Reading the angle inside graphicsLayer only redraws the layer, not the composable.
+    Canvas(modifier.size(size).graphicsLayer { rotationZ = angle.floatValue }) {
         drawArc(color, startAngle = 0f, sweepAngle = 270f, useCenter = false, style = Stroke(stroke.toPx(), cap = StrokeCap.Round))
     }
 }
@@ -215,3 +220,5 @@ internal fun Spinner(color: Color, size: Dp, stroke: Dp = 2.dp, modifier: Modifi
 internal fun Dot(color: Color, size: Dp = 8.dp) {
     Box(Modifier.size(size).clip(CircleShape).background(color))
 }
+
+private const val SPIN_MS = 900L

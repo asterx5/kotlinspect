@@ -2,9 +2,7 @@ package io.github.asterx5.kotlinspect.internal.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -68,27 +66,25 @@ internal class KsType(colors: KsColors) {
     val hero = TextStyle(fontFamily = Mono, fontSize = 34.sp, fontWeight = FontWeight.Bold, color = colors.text, lineHeight = 38.sp)
 }
 
-private val LocalKsColors = staticCompositionLocalOf { DarkColors }
-private val LocalKsType = staticCompositionLocalOf { KsType(DarkColors) }
-
 private val DarkType = KsType(DarkColors)
 private val LightType = KsType(LightColors)
 
+/**
+ * Colors and type follow the system theme directly rather than through composition locals.
+ * Providing locals passes ProvidedValue to a Compose runtime function, and code compiled against
+ * the Compose 1.7 floor then reads a stability field that newer runtimes made private, which
+ * fails to link on iOS (IrLinkageError).
+ */
 internal object Ks {
     val colors: KsColors
-        @Composable get() = LocalKsColors.current
+        @Composable get() = if (isSystemInDarkTheme()) DarkColors else LightColors
     val type: KsType
-        @Composable get() = LocalKsType.current
+        @Composable get() = if (isSystemInDarkTheme()) DarkType else LightType
 }
 
 @Composable
 internal fun KotlinspectTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
-    CompositionLocalProvider(
-        LocalKsColors provides if (dark) DarkColors else LightColors,
-        LocalKsType provides if (dark) DarkType else LightType,
-        content = content,
-    )
+    content()
 }
 
 internal fun KsColors.methodColor(method: String): Color = Color(KsPalette.of(isDark).methodColor(method))

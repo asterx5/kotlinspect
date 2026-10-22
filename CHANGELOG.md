@@ -2,6 +2,11 @@
 
 All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 
+## 1.0.0-beta09
+
+- Fix: on Compose Multiplatform iOS apps using a newer Compose (for example 1.12), showing the bubble crashed with `IrLinkageError: Can not read value from backing field of property 'androidx_compose_runtime_ProvidedValue$stable'`. Code compiled against the Compose 1.7 floor read stability fields that newer Compose made private. The Compose UI no longer passes `ProvidedValue`, `InfiniteTransition` or `InfiniteRepeatableSpec` across library boundaries (theme reads the system theme directly; the spinner runs on frame callbacks), and a scan of the iOS klib confirms it reads no other library's stability fields.
+- Includes the beta08 fix for the iOS crash on the first `KtLog` call.
+
 ## 1.0.0-beta08
 
 - Fix: on iOS, the first `KtLog` call crashed the app (`EXC_BAD_ACCESS` in `NSLog`). Kotlog passed the text as a `%@` argument, which Kotlin/Native does not turn into an `NSString`. It now passes the text as the format with `%` escaped. If you set `KtLog.consoleEnabled = false` to work around this, you can remove it.

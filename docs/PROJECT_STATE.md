@@ -429,6 +429,15 @@ verified on the GitHub-login Central account.
   `-no-snapshot-save`).
 - `jsonplaceholder.typicode.com` often resets connections from the emulator; failures there are the
   network, not the library.
+- **Compose stability fields break iOS linking.** When a composable receives a value whose type
+  comes from another library (e.g. `ProvidedValue` via `CompositionLocalProvider`,
+  `InfiniteTransition`), the Compose compiler reads that type's `$stable` field. Compiled against
+  the 1.7 floor it reads the field directly; newer Compose made it private (with a getter), so iOS
+  apps on new Compose crash with `IrLinkageError` (beta09 fix). Android/JVM are unaffected. Check
+  after UI changes: `klib dump-ir-signatures <kotlinspect iOS klib> | grep '\$stable'` must list only
+  `io.github.asterx5` entries.
+- Kotlin/Native does not bridge a Kotlin `String` passed as a C vararg (`NSLog("%@", s)` crashed,
+  beta08 fix). Pass strings only through typed parameters.
 - The Compose Gradle plugin is intentionally **not** applied to the library modules (it warns when
   the library compiles against an older Compose than the plugin version).
 
