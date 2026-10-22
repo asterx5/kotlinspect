@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -182,8 +183,11 @@ internal fun FullScreenOverlay(
                     counts,
                     showLogCount = host.showLogCount,
                     modifier = Modifier
-                        // Absolute: the overlay sits inside the app's layout direction, and a mirrored
-                        // offset would put a right-edge bubble on the left and drag it backwards.
+                        // Absolute, both the corner and the offset: the overlay sits inside the app's
+                        // layout direction. In a right-to-left app the Box's start corner is the top
+                        // right, so an absolute offset from it pushed the bubble off screen, and a
+                        // mirrored offset put a right-edge bubble on the left and dragged it backwards.
+                        .align(AbsoluteAlignment.TopLeft)
                         .absoluteOffset { IntOffset(clamped.x.roundToInt(), clamped.y.roundToInt()) }
                         .pointerInput(Unit) { detectTapGestures { onOpenInspector() } }
                         .pointerInput(maxX, maxY) {
