@@ -2,6 +2,11 @@
 
 All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 
+## 1.0.0-beta10
+
+- Fix: on iPhone, an app using Kotlinspect took no taps at all, from launch. The automatic iOS overlay is a window above the app that is meant to let touches through everywhere except the bubble; it relied on `hitTest` returning nothing, which did not pass taps on to the app. The window now claims only the bubble's own area (`pointInside`), so UIKit skips it for every other touch.
+- With `bubble { automatic = false }`, iOS no longer creates the automatic overlay window at all; apps that place `KotlinspectOverlay` themselves get no window above them. Turning `automatic` back on with `configure` installs it.
+
 ## 1.0.0-beta09
 
 - Fix: on Compose Multiplatform iOS apps using a newer Compose (for example 1.12), showing the bubble crashed with `IrLinkageError: Can not read value from backing field of property 'androidx_compose_runtime_ProvidedValue$stable'`. Code compiled against the Compose 1.7 floor read stability fields that newer Compose made private. The Compose UI no longer passes `ProvidedValue`, `InfiniteTransition` or `InfiniteRepeatableSpec` across library boundaries (theme reads the system theme directly; the spinner runs on frame callbacks), and a scan of the iOS klib confirms it reads no other library's stability fields.

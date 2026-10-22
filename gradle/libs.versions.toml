@@ -51,7 +51,7 @@ ks-room-compiler = { module = "androidx.room:room-compiler", version.ref = "ks-r
 ks-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "ks-sqlite" }
 ks-sqlite-framework = { module = "androidx.sqlite:sqlite-framework", version.ref = "ks-sqlite" }
 ks-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "ks-activity" }
-kotlinspect = { module = "io.github.asterx5:kotlinspect", version = "1.0.0-beta09" }
+kotlinspect = { module = "io.github.asterx5:kotlinspect", version = "1.0.0-beta10" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 junit = { module = "junit:junit", version.ref = "junit" }

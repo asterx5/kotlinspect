@@ -44,6 +44,7 @@ public object Kotlinspect {
         runtimeRef.load()?.let { runtime ->
             runtime.config = resolved
             runtime.bubbleVisible.value = resolved.bubbleEnabled && resolved.enabled
+            Platform.onConfigChanged(hostFor(runtime))
         }
     }
 

@@ -45,6 +45,9 @@ internal actual object Platform {
         providers.forEach { runCatching { it.install(); it.onStarted(host) } }
     }
 
+    // The Compose overlay reads the config live; nothing to install or remove.
+    actual fun onConfigChanged(host: KotlinspectHost) = Unit
+
     actual fun openInspector(host: KotlinspectHost, sessionId: String?) {
         providers.firstOrNull()?.let { runCatching { it.openInspector(host, sessionId) } }
     }

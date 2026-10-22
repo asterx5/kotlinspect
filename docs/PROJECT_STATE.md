@@ -436,6 +436,9 @@ verified on the GitHub-login Central account.
   apps on new Compose crash with `IrLinkageError` (beta09 fix). Android/JVM are unaffected. Check
   after UI changes: `klib dump-ir-signatures <kotlinspect iOS klib> | grep '\$stable'` must list only
   `io.github.asterx5` entries.
+- **iOS overlay windows must refuse touches in `pointInside`.** A `hitTest` that returns null for
+  everything but the bubble still left iPhone apps taking no taps (beta10 fix). The automatic
+  window claims only the bubble's area, and is not created at all with `bubble { automatic = false }`.
 - Kotlin/Native does not bridge a Kotlin `String` passed as a C vararg (`NSLog("%@", s)` crashed,
   beta08 fix). Pass strings only through typed parameters.
 - The Compose Gradle plugin is intentionally **not** applied to the library modules (it warns when

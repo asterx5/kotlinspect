@@ -22,6 +22,9 @@ internal expect object Platform {
     /** Shows the automatic bubble and toast. Called once, when capture starts. */
     fun onRuntimeStarted(host: KotlinspectHost)
 
+    /** Called when [io.github.asterx5.kotlinspect.Kotlinspect.configure] changes a running config. */
+    fun onConfigChanged(host: KotlinspectHost)
+
     /** Opens the inspector on [sessionId], or on the current session when null. */
     fun openInspector(host: KotlinspectHost, sessionId: String?)
 }

@@ -374,6 +374,12 @@ internal class OverlayView(
         return listOf(minX, minY, (w - right - MARGIN - half).coerceAtLeast(minX), (h - bottom - MARGIN - half).coerceAtLeast(minY))
     }
 
+    /** Whether a touch at [point], in [window]'s coordinates, lands on the visible bubble. */
+    fun bubbleContains(point: CValue<CGPoint>, window: UIView): Boolean {
+        if (hidden || bubble.hidden || this.window == null) return false
+        return bubble.pointInside(bubble.convertPoint(point, fromView = window), withEvent = null)
+    }
+
     fun moveBubbleCenter(x: Double, y: Double) {
         val (minX, minY, maxX, maxY) = area()
         bubble.setCenter(CGPointMake(x.coerceIn(minX, maxX), y.coerceIn(minY, maxY)))
@@ -393,8 +399,20 @@ internal class OverlayView(
     }
 }
 
-/** A window that lets touches through wherever its overlay has nothing to hit. */
-internal class PassthroughWindow(scene: UIWindowScene) : UIWindow(windowScene = scene) {
+/**
+ * A window that lets touches through wherever its overlay has nothing to hit.
+ *
+ * Claiming only the bubble's own area in [pointInside] makes UIKit skip this window for every
+ * other touch before hit-testing it at all. Relying on [hitTest] returning null alone was not
+ * enough: on iPhone it left the app underneath taking no taps at all.
+ */
+internal class PassthroughWindow(
+    scene: UIWindowScene,
+    private val overlay: OverlayView,
+) : UIWindow(windowScene = scene) {
+    override fun pointInside(point: CValue<CGPoint>, withEvent: UIEvent?): Boolean =
+        overlay.bubbleContains(point, this)
+
     override fun hitTest(point: CValue<CGPoint>, withEvent: UIEvent?): UIView? {
         val hit = super.hitTest(point, withEvent)
         return if (hit === this || hit === rootViewController?.view) null else hit

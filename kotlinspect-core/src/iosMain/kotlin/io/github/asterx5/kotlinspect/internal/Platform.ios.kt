@@ -58,7 +58,11 @@ internal actual object Platform {
     actual fun sqliteDriver(): SQLiteDriver = BundledSQLiteDriver()
 
     actual fun onRuntimeStarted(host: KotlinspectHost) {
-        dispatch_async(dispatch_get_main_queue()) { IosUi.installAutomaticOverlay() }
+        dispatch_async(dispatch_get_main_queue()) { IosUi.updateAutomaticOverlay(host) }
+    }
+
+    actual fun onConfigChanged(host: KotlinspectHost) {
+        dispatch_async(dispatch_get_main_queue()) { IosUi.updateAutomaticOverlay(host) }
     }
 
     actual fun openInspector(host: KotlinspectHost, sessionId: String?) {
@@ -68,8 +72,10 @@ internal actual object Platform {
 
 /**
  * Native UIKit UI. The automatic overlay is a pass-through window above the app holding the same
- * OverlayView apps can place themselves. The inspector is presented as a standard sheet on a
- * transparent host in its own window, so it never depends on the app's view controllers.
+ * OverlayView apps can place themselves. It only exists while the automatic bubble is wanted: an
+ * app that places its own overlays (`bubble { automatic = false }`) never gets a window above it.
+ * The inspector is presented as a standard sheet on a transparent host in its own window, so it
+ * never depends on the app's view controllers.
  */
 internal object IosUi {
     private var overlayWindow: UIWindow? = null
@@ -98,7 +104,13 @@ internal object IosUi {
         }
     }
 
-    fun installAutomaticOverlay() {
+    /** Installs the automatic overlay window when the config wants one, and removes it when not. */
+    fun updateAutomaticOverlay(host: KotlinspectHost) {
+        val config = host.runtime.config
+        if (config.enabled && config.bubbleAutomatic) installAutomaticOverlay() else removeAutomaticOverlay()
+    }
+
+    private fun installAutomaticOverlay() {
         if (overlayWindow != null) return
         whenSceneReady { scene ->
             if (overlayWindow != null) return@whenSceneReady
@@ -107,7 +119,7 @@ internal object IosUi {
             val overlay = OverlayView(sessionId = null, embedded = false)
             overlay.setFrame(root.view.bounds)
             root.view.addSubview(overlay)
-            val window = PassthroughWindow(scene).apply {
+            val window = PassthroughWindow(scene, overlay).apply {
                 setFrame(scene.coordinateSpace.bounds)
                 windowLevel = UIWindowLevelAlert + 1
                 backgroundColor = UIColor.clearColor
@@ -116,6 +128,14 @@ internal object IosUi {
             }
             overlayWindow = window
         }
+    }
+
+    private fun removeAutomaticOverlay() {
+        val window = overlayWindow ?: return
+        overlayWindow = null
+        window.hidden = true
+        // Detaching the overlay view stops its collectors (see OverlayView.didMoveToWindow).
+        window.rootViewController = null
     }
 
     fun presentInspector(host: KotlinspectHost, sessionId: String?) {
