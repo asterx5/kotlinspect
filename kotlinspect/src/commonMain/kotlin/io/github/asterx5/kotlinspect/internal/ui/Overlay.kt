@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -130,9 +130,17 @@ private val LogPill = androidx.compose.ui.graphics.Color(0xFF2A2E38)
 
 internal val BUBBLE_SIZE = 64.dp
 
-/** Bubble position shared across activities and screens, in pixels from the top-left. */
+/**
+ * Where the bubble rests, shared across activities and screens: the edge it hugs and how far
+ * down that edge it sits (0 top, 1 bottom).
+ *
+ * Kept as an anchor rather than pixels so the bubble follows the overlay's size. The first
+ * layout can be smaller than the final one (a desktop window is laid out while it is still
+ * being created), and pixels taken from it left the bubble mid-screen until it was dragged.
+ */
 internal object BubblePosition {
-    var offset: Offset? = null
+    var alignRight: Boolean = true
+    var yFraction: Float = 0.7f
 }
 
 /**
@@ -159,10 +167,13 @@ internal fun FullScreenOverlay(
         BoxWithConstraints(Modifier.fillMaxSize().safeAreaPadding()) {
             val maxX = with(density) { (maxWidth - BUBBLE_SIZE).toPx() }
             val maxY = with(density) { (maxHeight - BUBBLE_SIZE).toPx() }
-            var offset by remember {
-                mutableStateOf(BubblePosition.offset ?: Offset(maxX, maxY * 0.7f))
-            }
-            val clamped = Offset(offset.x.coerceIn(0f, maxX.coerceAtLeast(0f)), offset.y.coerceIn(0f, maxY.coerceAtLeast(0f)))
+            var alignRight by remember { mutableStateOf(BubblePosition.alignRight) }
+            var yFraction by remember { mutableStateOf(BubblePosition.yFraction) }
+            // Pixels only while a finger is down; at rest the anchor decides.
+            var dragged by remember { mutableStateOf<Offset?>(null) }
+            val rest = Offset(if (alignRight) maxX else 0f, maxY * yFraction)
+            val position = dragged ?: rest
+            val clamped = Offset(position.x.coerceIn(0f, maxX.coerceAtLeast(0f)), position.y.coerceIn(0f, maxY.coerceAtLeast(0f)))
 
             ToastHost(if (automatic && embedded > 0) null else toast, Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
 
@@ -171,20 +182,37 @@ internal fun FullScreenOverlay(
                     counts,
                     showLogCount = host.showLogCount,
                     modifier = Modifier
-                        .offset { IntOffset(clamped.x.roundToInt(), clamped.y.roundToInt()) }
+                        // Absolute: the overlay sits inside the app's layout direction, and a mirrored
+                        // offset would put a right-edge bubble on the left and drag it backwards.
+                        .absoluteOffset { IntOffset(clamped.x.roundToInt(), clamped.y.roundToInt()) }
                         .pointerInput(Unit) { detectTapGestures { onOpenInspector() } }
                         .pointerInput(maxX, maxY) {
+                            // Snaps to the nearer edge, remembered as an anchor.
+                            fun settle() {
+                                val end = dragged ?: return
+                                alignRight = end.x >= maxX / 2
+                                yFraction = if (maxY > 0f) (end.y / maxY).coerceIn(0f, 1f) else yFraction
+                                BubblePosition.alignRight = alignRight
+                                BubblePosition.yFraction = yFraction
+                                dragged = null
+                            }
                             detectDragGestures(
-                                onDragEnd = {
-                                    // Snap to the nearest horizontal edge.
-                                    offset = Offset(if (offset.x < maxX / 2) 0f else maxX, offset.y.coerceIn(0f, maxY))
-                                    BubblePosition.offset = offset
+                                // Read from the anchor state now: this block outlives a drag, so a
+                                // position captured when it started could be a previous one.
+                                onDragStart = {
+                                    dragged = Offset(
+                                        if (alignRight) maxX.coerceAtLeast(0f) else 0f,
+                                        (maxY * yFraction).coerceIn(0f, maxY.coerceAtLeast(0f)),
+                                    )
                                 },
+                                onDragEnd = ::settle,
+                                onDragCancel = ::settle,
                             ) { change, drag ->
                                 change.consume()
-                                offset = Offset(
-                                    (offset.x + drag.x).coerceIn(0f, maxX),
-                                    (offset.y + drag.y).coerceIn(0f, maxY),
+                                val from = dragged ?: return@detectDragGestures
+                                dragged = Offset(
+                                    (from.x + drag.x).coerceIn(0f, maxX.coerceAtLeast(0f)),
+                                    (from.y + drag.y).coerceIn(0f, maxY.coerceAtLeast(0f)),
                                 )
                             }
                         },

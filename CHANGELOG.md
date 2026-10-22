@@ -5,6 +5,8 @@ All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 ## 1.0.0-beta11
 
 - Fix: on desktop, apps on a newer Compose than 1.7 (for example 1.11 or 1.12) crashed as soon as the bubble or the inspector composed, with `NoSuchMethodError: WindowInsets_notMobileKt.getSafeDrawing`. Kotlinspect is compiled against the Compose 1.7 floor, where `WindowInsets.safeDrawing` on desktop lived in a JVM class that newer Compose moved. The safe-area padding is now chosen per platform: Android and iOS still use `safeDrawing`, and desktop, which has no system insets inside its window, pads nothing. A scan of the desktop jar against Compose 1.12 finds no other missing Compose method.
+- Fix: the bubble could start in the middle of the screen and only jump to the edge once touched. Its first position was taken in pixels from the first layout, which can be smaller than the final one (a desktop window is laid out while it is still being created). It is now kept as an edge and a height (right edge, 70% down by default), so it follows any size change: window resizes, rotation, split screen.
+- Fix: in right-to-left apps (Arabic, Hebrew), the Compose bubble was mirrored: it started on the wrong edge and moved the opposite way from a drag. It is now placed in absolute coordinates.
 
 ## 1.0.0-beta10
 
