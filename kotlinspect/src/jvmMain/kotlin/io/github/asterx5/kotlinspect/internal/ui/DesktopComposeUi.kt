@@ -172,7 +172,7 @@ private class DesktopOverlay(private val ks: KotlinspectHost) {
                     }
                 },
                 contentAlignment = Alignment.Center,
-            ) { BubbleContent(counts) }
+            ) { BubbleContent(counts, showLogCount = ks.showLogCount) }
         }
     }
 

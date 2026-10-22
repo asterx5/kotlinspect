@@ -123,6 +123,10 @@ public object Kotlinspect {
     public val inFlightCount: Flow<Int>
         get() = currentSessionFlow { rt, id -> rt.database.records().observeCounts(id).map { it.inFlight } }.withDefault(0)
 
+    /** Number of KtLog entries in the current session. */
+    public val logCount: Flow<Int>
+        get() = currentSessionFlow { rt, id -> rt.database.logs().observeCount(id) }.withDefault(0)
+
     /** Number of failed calls and 4xx/5xx responses in the current session. */
     public val errorCount: Flow<Int>
         get() = currentSessionFlow { rt, id -> rt.database.records().observeCounts(id).map { it.errors } }.withDefault(0)

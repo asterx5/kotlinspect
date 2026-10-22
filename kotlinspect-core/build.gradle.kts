@@ -50,11 +50,13 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
         optIn.add("kotlin.uuid.ExperimentalUuidApi")
         optIn.add("io.github.asterx5.kotlinspect.InternalKotlinspectApi")
+        optIn.add("io.github.asterx5.kotlog.InternalKotlogApi")
     }
 
     sourceSets {
         commonMain.dependencies {
             api(libs.ks.ktor.client.core)
+            api(project(":kotlog"))
             implementation(libs.ks.coroutines.core)
             implementation(libs.ks.serialization.json)
             implementation(libs.ks.room.runtime)

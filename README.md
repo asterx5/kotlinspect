@@ -3,7 +3,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.asterx5/kotlinspect?label=Maven%20Central&include_prereleases)](https://central.sonatype.com/artifact/io.github.asterx5/kotlinspect)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-Latest: **1.0.0-beta05**. See the [changelog](CHANGELOG.md).
+Latest: **1.0.0-beta06**. See the [changelog](CHANGELOG.md).
 
 A network inspector for Kotlin Multiplatform apps that use Ktor. Add one dependency and every HTTP call shows up in a floating bubble, a toast, and a full inspector screen on **Android, iOS and Desktop**. It is off in release builds by default.
 
@@ -34,6 +34,7 @@ Kotlinspect comes in two artifacts:
 |---|---|---|
 | `io.github.asterx5:kotlinspect` | Everything, with a Compose UI (bubble, toast, inspector) | Your app uses Compose Multiplatform or Jetpack Compose |
 | `io.github.asterx5:kotlinspect-core` | Capture, storage, sessions, the API and the **native iOS UI**. No Compose at all | Your iOS app uses SwiftUI or UIKit, or you only need capture |
+| `io.github.asterx5:kotlog` | Just the `KtLog` logging API, no dependencies | Modules that only log (both artifacts above include it) |
 
 `kotlinspect` includes `kotlinspect-core`, so you only ever add one of them.
 
@@ -50,7 +51,7 @@ dependencyResolutionManagement {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.asterx5:kotlinspect:1.0.0-beta05")
+            implementation("io.github.asterx5:kotlinspect:1.0.0-beta06")
         }
     }
 }
@@ -59,7 +60,7 @@ kotlin {
 To use a local build in your other projects:
 
 ```bash
-./gradlew :kotlinspect-core:publishToMavenLocal :kotlinspect:publishToMavenLocal
+./gradlew :kotlog:publishToMavenLocal :kotlinspect-core:publishToMavenLocal :kotlinspect:publishToMavenLocal
 ```
 
 Then install the plugin in your client:
@@ -71,6 +72,32 @@ val client = HttpClient {
 ```
 
 That's all. On Android, the library's manifest picks up the app context automatically. On iOS and desktop, the bubble appears with the first call.
+
+## Logging with Kotlog
+
+`KtLog` is included with Kotlinspect, and also available alone as `io.github.asterx5:kotlog`
+(no dependencies, so data and domain modules can use it). Every entry prints the platform way
+(Android `Log`, `NSLog` on iOS, the console on desktop) and appears in the inspector's **Logs**
+tab. Only what you log with `KtLog` is captured, not the rest of the console.
+
+```kotlin
+KtLog.d(TAG, "Loaded ${items.size} items", LogLayer.Datasource.value)
+KtLog.e(TAG, "Request failed", "repository", error)
+KtLog.log(LogLevel.Warn, TAG, "Slow response", "datasource")
+```
+
+Levels are `v`, `d`, `i`, `w`, `e` and `wtf`, like Android. Layers are any string; `LogLayer`
+offers `Datasource`, `Repository`, `Usecase`, `ViewModel` and `UI` via `.value`. In the inspector
+you can search messages and filter by several tags, layers and levels at once.
+
+From Swift (export `io.github.asterx5:kotlog` in the framework, like `kotlinspect-core` below):
+
+```swift
+KtLog.shared.d(tag: "Feed", message: "Loaded", layer: LogLayer.datasource.value)
+```
+
+Options: `Kotlinspect.configure { logs { maxCount = 5_000 }; bubble { showLogCount = true } }` and
+`KtLog.consoleEnabled = false` to stop printing.
 
 ## Placing the bubble yourself
 
@@ -106,12 +133,12 @@ kotlin {
     listOf(iosArm64(), iosSimulatorArm64()).forEach {
         it.binaries.framework {
             baseName = "Shared"
-            export("io.github.asterx5:kotlinspect-core:1.0.0-beta05")
+            export("io.github.asterx5:kotlinspect-core:1.0.0-beta06")
         }
     }
     sourceSets {
         commonMain.dependencies {
-            api("io.github.asterx5:kotlinspect-core:1.0.0-beta05")
+            api("io.github.asterx5:kotlinspect-core:1.0.0-beta06")
         }
     }
 }
@@ -254,13 +281,14 @@ Use `enabled = false` as a master switch in any build.
 
 - `kotlinspect-core/`: capture, storage, sessions, the public API and the native iOS UI.
 - `kotlinspect/`: the Compose UI on top of core.
+- `kotlog/`: the `KtLog` logging API, with no dependencies.
 - `Package.swift`, `swift/`: the optional `KotlinspectSwiftUI` Swift package.
 - `shared/`, `androidApp/`, `desktopApp/`, `iosApp/`: a sample app with a playground and a Postman-style request builder. It consumes the library from Maven Local, the same way other apps do.
 
 ```bash
 ./gradlew :kotlinspect-core:jvmTest     # tests
 ./gradlew checkKotlinAbi                # public API check for both modules (updateKotlinAbi after deliberate changes)
-./gradlew :kotlinspect-core:publishToMavenLocal :kotlinspect:publishToMavenLocal
+./gradlew :kotlog:publishToMavenLocal :kotlinspect-core:publishToMavenLocal :kotlinspect:publishToMavenLocal
 ./gradlew :androidApp:assembleDebug
 ./gradlew :desktopApp:run
 ```

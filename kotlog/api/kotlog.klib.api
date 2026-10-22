@@ -1,0 +1,83 @@
+// Klib ABI Dump
+// Targets: [iosArm64, iosSimulatorArm64]
+// Rendering settings:
+// - Signature version: 2
+// - Show manifest properties: true
+// - Show declarations: true
+
+// Library unique name: <io.github.asterx5:kotlog>
+open annotation class io.github.asterx5.kotlog/InternalKotlogApi : kotlin/Annotation { // io.github.asterx5.kotlog/InternalKotlogApi|null[0]
+    constructor <init>() // io.github.asterx5.kotlog/InternalKotlogApi.<init>|<init>(){}[0]
+}
+
+final enum class io.github.asterx5.kotlog/LogLayer : kotlin/Enum<io.github.asterx5.kotlog/LogLayer> { // io.github.asterx5.kotlog/LogLayer|null[0]
+    enum entry Datasource // io.github.asterx5.kotlog/LogLayer.Datasource|null[0]
+    enum entry Repository // io.github.asterx5.kotlog/LogLayer.Repository|null[0]
+    enum entry UI // io.github.asterx5.kotlog/LogLayer.UI|null[0]
+    enum entry Usecase // io.github.asterx5.kotlog/LogLayer.Usecase|null[0]
+    enum entry ViewModel // io.github.asterx5.kotlog/LogLayer.ViewModel|null[0]
+
+    final val entries // io.github.asterx5.kotlog/LogLayer.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<io.github.asterx5.kotlog/LogLayer> // io.github.asterx5.kotlog/LogLayer.entries.<get-entries>|<get-entries>#static(){}[0]
+    final val value // io.github.asterx5.kotlog/LogLayer.value|{}value[0]
+        final fun <get-value>(): kotlin/String // io.github.asterx5.kotlog/LogLayer.value.<get-value>|<get-value>(){}[0]
+
+    final fun valueOf(kotlin/String): io.github.asterx5.kotlog/LogLayer // io.github.asterx5.kotlog/LogLayer.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<io.github.asterx5.kotlog/LogLayer> // io.github.asterx5.kotlog/LogLayer.values|values#static(){}[0]
+}
+
+final enum class io.github.asterx5.kotlog/LogLevel : kotlin/Enum<io.github.asterx5.kotlog/LogLevel> { // io.github.asterx5.kotlog/LogLevel|null[0]
+    enum entry Assert // io.github.asterx5.kotlog/LogLevel.Assert|null[0]
+    enum entry Debug // io.github.asterx5.kotlog/LogLevel.Debug|null[0]
+    enum entry Error // io.github.asterx5.kotlog/LogLevel.Error|null[0]
+    enum entry Info // io.github.asterx5.kotlog/LogLevel.Info|null[0]
+    enum entry Verbose // io.github.asterx5.kotlog/LogLevel.Verbose|null[0]
+    enum entry Warn // io.github.asterx5.kotlog/LogLevel.Warn|null[0]
+
+    final val entries // io.github.asterx5.kotlog/LogLevel.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<io.github.asterx5.kotlog/LogLevel> // io.github.asterx5.kotlog/LogLevel.entries.<get-entries>|<get-entries>#static(){}[0]
+    final val letter // io.github.asterx5.kotlog/LogLevel.letter|{}letter[0]
+        final fun <get-letter>(): kotlin/String // io.github.asterx5.kotlog/LogLevel.letter.<get-letter>|<get-letter>(){}[0]
+
+    final fun valueOf(kotlin/String): io.github.asterx5.kotlog/LogLevel // io.github.asterx5.kotlog/LogLevel.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<io.github.asterx5.kotlog/LogLevel> // io.github.asterx5.kotlog/LogLevel.values|values#static(){}[0]
+}
+
+abstract fun interface io.github.asterx5.kotlog/KtLogSink { // io.github.asterx5.kotlog/KtLogSink|null[0]
+    abstract fun record(io.github.asterx5.kotlog/KtLogEntry) // io.github.asterx5.kotlog/KtLogSink.record|record(io.github.asterx5.kotlog.KtLogEntry){}[0]
+}
+
+final class io.github.asterx5.kotlog/KtLogEntry { // io.github.asterx5.kotlog/KtLogEntry|null[0]
+    constructor <init>(kotlin/Long, io.github.asterx5.kotlog/LogLevel, kotlin/String, kotlin/String, kotlin/String?, kotlin/String?) // io.github.asterx5.kotlog/KtLogEntry.<init>|<init>(kotlin.Long;io.github.asterx5.kotlog.LogLevel;kotlin.String;kotlin.String;kotlin.String?;kotlin.String?){}[0]
+
+    final val layer // io.github.asterx5.kotlog/KtLogEntry.layer|{}layer[0]
+        final fun <get-layer>(): kotlin/String? // io.github.asterx5.kotlog/KtLogEntry.layer.<get-layer>|<get-layer>(){}[0]
+    final val level // io.github.asterx5.kotlog/KtLogEntry.level|{}level[0]
+        final fun <get-level>(): io.github.asterx5.kotlog/LogLevel // io.github.asterx5.kotlog/KtLogEntry.level.<get-level>|<get-level>(){}[0]
+    final val message // io.github.asterx5.kotlog/KtLogEntry.message|{}message[0]
+        final fun <get-message>(): kotlin/String // io.github.asterx5.kotlog/KtLogEntry.message.<get-message>|<get-message>(){}[0]
+    final val tag // io.github.asterx5.kotlog/KtLogEntry.tag|{}tag[0]
+        final fun <get-tag>(): kotlin/String // io.github.asterx5.kotlog/KtLogEntry.tag.<get-tag>|<get-tag>(){}[0]
+    final val throwable // io.github.asterx5.kotlog/KtLogEntry.throwable|{}throwable[0]
+        final fun <get-throwable>(): kotlin/String? // io.github.asterx5.kotlog/KtLogEntry.throwable.<get-throwable>|<get-throwable>(){}[0]
+    final val timestampMillis // io.github.asterx5.kotlog/KtLogEntry.timestampMillis|{}timestampMillis[0]
+        final fun <get-timestampMillis>(): kotlin/Long // io.github.asterx5.kotlog/KtLogEntry.timestampMillis.<get-timestampMillis>|<get-timestampMillis>(){}[0]
+}
+
+final object io.github.asterx5.kotlog/KtLog { // io.github.asterx5.kotlog/KtLog|null[0]
+    final var consoleEnabled // io.github.asterx5.kotlog/KtLog.consoleEnabled|{}consoleEnabled[0]
+        final fun <get-consoleEnabled>(): kotlin/Boolean // io.github.asterx5.kotlog/KtLog.consoleEnabled.<get-consoleEnabled>|<get-consoleEnabled>(){}[0]
+        final fun <set-consoleEnabled>(kotlin/Boolean) // io.github.asterx5.kotlog/KtLog.consoleEnabled.<set-consoleEnabled>|<set-consoleEnabled>(kotlin.Boolean){}[0]
+
+    final fun d(kotlin/String, kotlin/String, kotlin/String? = ...) // io.github.asterx5.kotlog/KtLog.d|d(kotlin.String;kotlin.String;kotlin.String?){}[0]
+    final fun e(kotlin/String, kotlin/String, kotlin/String? = ..., kotlin/Throwable? = ...) // io.github.asterx5.kotlog/KtLog.e|e(kotlin.String;kotlin.String;kotlin.String?;kotlin.Throwable?){}[0]
+    final fun i(kotlin/String, kotlin/String, kotlin/String? = ...) // io.github.asterx5.kotlog/KtLog.i|i(kotlin.String;kotlin.String;kotlin.String?){}[0]
+    final fun log(io.github.asterx5.kotlog/LogLevel, kotlin/String, kotlin/String, kotlin/String? = ..., kotlin/Throwable? = ...) // io.github.asterx5.kotlog/KtLog.log|log(io.github.asterx5.kotlog.LogLevel;kotlin.String;kotlin.String;kotlin.String?;kotlin.Throwable?){}[0]
+    final fun v(kotlin/String, kotlin/String, kotlin/String? = ...) // io.github.asterx5.kotlog/KtLog.v|v(kotlin.String;kotlin.String;kotlin.String?){}[0]
+    final fun w(kotlin/String, kotlin/String, kotlin/String? = ..., kotlin/Throwable? = ...) // io.github.asterx5.kotlog/KtLog.w|w(kotlin.String;kotlin.String;kotlin.String?;kotlin.Throwable?){}[0]
+    final fun wtf(kotlin/String, kotlin/String, kotlin/String? = ..., kotlin/Throwable? = ...) // io.github.asterx5.kotlog/KtLog.wtf|wtf(kotlin.String;kotlin.String;kotlin.String?;kotlin.Throwable?){}[0]
+}
+
+final object io.github.asterx5.kotlog/KtLogSinks { // io.github.asterx5.kotlog/KtLogSinks|null[0]
+    final fun register(io.github.asterx5.kotlog/KtLogSink) // io.github.asterx5.kotlog/KtLogSinks.register|register(io.github.asterx5.kotlog.KtLogSink){}[0]
+}

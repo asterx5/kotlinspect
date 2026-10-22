@@ -2,6 +2,15 @@
 
 All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 
+## 1.0.0-beta06
+
+- New **Kotlog** artifact (`io.github.asterx5:kotlog`): a tiny logging API with no dependencies. `KtLog.d(TAG, "message", "datasource")`, also `v`, `i`, `w`, `e`, `wtf` and `log(LogLevel, ...)`; layers via `LogLayer.Datasource.value` (Repository, Usecase, ViewModel, UI) or any string. Entries print the platform way (Android Log, NSLog, console) and, with Kotlinspect in the app, are stored for the inspector with no setup. `kotlinspect` and `kotlinspect-core` include it.
+- Inspector **Logs** tab (Compose UI: Android, desktop, Compose Multiplatform iOS): search by message, multi-select filters for tags, layers and levels, showing only values present in the session; tap an entry to expand it with its stack trace and copy it.
+- Bubble shows a small log count under the call count (`bubble { showLogCount = false }` to hide). `Kotlinspect.logCount` flow.
+- `logs { enabled; maxCount }` options; logs are capped at 5,000 by default and cleared with their session.
+- Database version 2 with a migration that keeps existing calls and sessions.
+- Not yet in the native iOS UI: the UIKit inspector has no Logs tab and the UIKit bubble no log count. On iOS, KtLog still prints and stores entries.
+
 ## 1.0.0-beta05
 
 - New `kotlinspect-core` artifact: capture, storage, sessions, the API and a native UIKit bubble, toast and inspector, with no Compose dependency. SwiftUI and UIKit apps can use Kotlinspect without Compose. `kotlinspect` now adds the Compose UI on top of it; existing users change nothing.

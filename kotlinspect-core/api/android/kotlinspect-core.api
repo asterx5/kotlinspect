@@ -5,8 +5,10 @@ public abstract interface class io/github/asterx5/kotlinspect/BodyRedactor {
 public final class io/github/asterx5/kotlinspect/BubbleOptions {
 	public final fun getAutomatic ()Z
 	public final fun getEnabled ()Z
+	public final fun getShowLogCount ()Z
 	public final fun setAutomatic (Z)V
 	public final fun setEnabled (Z)V
+	public final fun setShowLogCount (Z)V
 }
 
 public final class io/github/asterx5/kotlinspect/CallState : java/lang/Enum {
@@ -40,6 +42,7 @@ public final class io/github/asterx5/kotlinspect/Kotlinspect {
 	public final fun getErrorCount ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getInFlightCount ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getLatestCall ()Lkotlinx/coroutines/flow/Flow;
+	public final fun getLogCount ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getSessions ()Lkotlinx/coroutines/flow/Flow;
 	public final fun host ()Lio/github/asterx5/kotlinspect/internal/KotlinspectHost;
 	public final fun isEnabled ()Z
@@ -77,11 +80,13 @@ public final class io/github/asterx5/kotlinspect/KotlinspectConfigBuilder {
 	public final fun getBubble ()Lio/github/asterx5/kotlinspect/BubbleOptions;
 	public final fun getDesktopAppName ()Ljava/lang/String;
 	public final fun getEnabled ()Z
+	public final fun getLogs ()Lio/github/asterx5/kotlinspect/LogOptions;
 	public final fun getMaxBodyBytes ()J
 	public final fun getRetention ()Lio/github/asterx5/kotlinspect/RetentionPolicy;
 	public final fun getSessionPolicy ()Lio/github/asterx5/kotlinspect/SessionPolicy;
 	public final fun getToast ()Lio/github/asterx5/kotlinspect/ToastOptions;
 	public final fun headerRedactor (Lio/github/asterx5/kotlinspect/HeaderRedactor;)V
+	public final fun logs (Lkotlin/jvm/functions/Function1;)V
 	public final fun redactHeaders ([Ljava/lang/String;)V
 	public final fun redactQueryParameters ([Ljava/lang/String;)V
 	public final fun retentionFor (Ljava/lang/String;Lio/github/asterx5/kotlinspect/RetentionPolicy;)V
@@ -125,6 +130,13 @@ public final class io/github/asterx5/kotlinspect/KotlinspectSessionContext : kot
 }
 
 public final class io/github/asterx5/kotlinspect/KotlinspectSessionContext$Key : kotlin/coroutines/CoroutineContext$Key {
+}
+
+public final class io/github/asterx5/kotlinspect/LogOptions {
+	public final fun getEnabled ()Z
+	public final fun getMaxCount ()I
+	public final fun setEnabled (Z)V
+	public final fun setMaxCount (I)V
 }
 
 public abstract interface class io/github/asterx5/kotlinspect/RetentionPolicy {

@@ -9,6 +9,8 @@ import io.github.asterx5.kotlinspect.ToastFilter
 import io.github.asterx5.kotlinspect.internal.capture.Redaction
 import io.github.asterx5.kotlinspect.internal.db.KeyValueEntity
 import io.github.asterx5.kotlinspect.internal.db.KotlinspectDatabase
+import io.github.asterx5.kotlinspect.internal.db.LogEntity
+import io.github.asterx5.kotlog.KtLogEntry
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
 import io.github.asterx5.kotlinspect.internal.db.SessionEntity
 import io.ktor.util.date.getTimeMillis
@@ -49,6 +51,9 @@ internal data class ResolvedConfig(
     val toastFilter: ToastFilter,
     val toastDurationMillis: Long,
     val toastBatchWindowMillis: Long,
+    val logsEnabled: Boolean,
+    val maxLogs: Int,
+    val showLogCount: Boolean,
 ) {
     companion object {
         fun from(b: KotlinspectConfigBuilder) = ResolvedConfig(
@@ -67,6 +72,9 @@ internal data class ResolvedConfig(
             toastFilter = b.toast.filter,
             toastDurationMillis = b.toast.durationMillis,
             toastBatchWindowMillis = b.toast.batchWindowMillis,
+            logsEnabled = b.logs.enabled,
+            maxLogs = b.logs.maxCount.coerceAtLeast(0),
+            showLogCount = b.bubble.showLogCount,
         )
     }
 }
@@ -139,7 +147,47 @@ internal class KotlinspectRuntime(
             }
         }
         enqueue { initialize() }
+        scope.launch { writeLogs() }
     }
+
+    // region Logs
+
+    private val logQueue = Channel<KtLogEntry>(Channel.UNLIMITED)
+
+    /** Queues a KtLog entry. Never blocks the caller; entries are written in batches. */
+    fun log(entry: KtLogEntry) {
+        val c = config
+        if (c.enabled && c.logsEnabled) logQueue.trySend(entry)
+    }
+
+    private suspend fun writeLogs() {
+        while (true) {
+            val first = logQueue.receive()
+            // Logs often come in bursts; gather them so they are written in one transaction.
+            delay(LOG_BATCH_DELAY_MILLIS)
+            val batch = mutableListOf(first)
+            while (batch.size < MAX_LOG_BATCH) batch += logQueue.tryReceive().getOrNull() ?: break
+            enqueue {
+                val sessionId = currentOrDefault()
+                val logs = database.logs()
+                logs.insertAll(batch.map { it.toEntity(sessionId) })
+                val max = config.maxLogs
+                if (logs.countAll() > max) logs.trimTo(max)
+            }
+        }
+    }
+
+    private fun KtLogEntry.toEntity(sessionId: String) = LogEntity(
+        sessionId = sessionId,
+        timestamp = timestampMillis,
+        level = level.name,
+        tag = tag,
+        layer = layer?.takeIf { it.isNotBlank() },
+        message = if (message.length > MAX_LOG_MESSAGE) message.take(MAX_LOG_MESSAGE) + "…" else message,
+        throwable = throwable,
+    )
+
+    // endregion
 
     fun close() {
         ops.close()
@@ -193,6 +241,7 @@ internal class KotlinspectRuntime(
             .filter { effectiveRetention(it) == RetentionPolicy.InMemoryOnly }
             .forEach {
                 records.deleteSession(it.id)
+                database.logs().deleteSession(it.id)
                 sessions.delete(it.id)
             }
         val id = when (val policy = config.sessionPolicy) {
@@ -260,10 +309,14 @@ internal class KotlinspectRuntime(
         if (database.sessions().get(id) != null) setCurrent(id)
     }
 
-    fun clearSession(id: String) = enqueue { database.records().deleteSession(id) }
+    fun clearSession(id: String) = enqueue {
+        database.records().deleteSession(id)
+        database.logs().deleteSession(id)
+    }
 
     fun deleteSession(id: String) = enqueue {
         database.records().deleteSession(id)
+        database.logs().deleteSession(id)
         database.sessions().delete(id)
         sessionIdsByName.entries.removeAll { it.value == id }
         if (_currentSessionId.value == id) {
@@ -275,6 +328,7 @@ internal class KotlinspectRuntime(
     fun clearAll() = enqueue {
         val current = currentOrDefault()
         database.records().deleteAll()
+        database.logs().deleteAll()
         database.sessions().deleteAllExcept(current)
         sessionIdsByName.entries.removeAll { it.value != current }
     }
@@ -348,6 +402,9 @@ internal class KotlinspectRuntime(
     // endregion
 
     companion object {
+        private const val LOG_BATCH_DELAY_MILLIS = 50L
+        private const val MAX_LOG_BATCH = 500
+        private const val MAX_LOG_MESSAGE = 32_000
         const val DEFAULT_SESSION: String = "Default"
         private const val KEY_ACTIVE_SESSION = "activeSession"
 

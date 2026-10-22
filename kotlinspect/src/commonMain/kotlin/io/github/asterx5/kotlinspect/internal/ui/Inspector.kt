@@ -93,6 +93,14 @@ internal class CallListState {
     var status: StatusFilter by mutableStateOf(StatusFilter.All)
     var method: String? by mutableStateOf(null)
     var sessionsOpen: Boolean by mutableStateOf(false)
+
+    // 0 = Network, 1 = Logs
+    var tab: Int by mutableStateOf(0)
+    var logQuery: String by mutableStateOf("")
+    var logTags: Set<String> by mutableStateOf(emptySet())
+    var logLayers: Set<String> by mutableStateOf(emptySet())
+    var logLevels: Set<String> by mutableStateOf(emptySet())
+    var expandedLogs: Set<Long> by mutableStateOf(emptySet())
 }
 
 @Composable
@@ -103,6 +111,7 @@ internal fun InspectorApp(host: KotlinspectHost, initialSessionId: String? = nul
         val backStack = remember { mutableStateListOf<InspectorRoute>(InspectorRoute.Calls) }
         val listState = remember { CallListState().apply { viewedSessionId = initialSessionId } }
         val listScroll = rememberLazyListState()
+        val logScroll = rememberLazyListState()
         val copied = remember { mutableStateOf<String?>(null) }
         val goBack: () -> Unit = {
             if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) else onClose()
@@ -122,8 +131,10 @@ internal fun InspectorApp(host: KotlinspectHost, initialSessionId: String? = nul
                         host,
                         listState,
                         listScroll,
+                        logScroll,
                         onOpen = { backStack.add(InspectorRoute.Detail(it)) },
                         onClose = onClose,
+                        onCopied = { copied.value = it },
                     )
                     is InspectorRoute.Detail -> CallDetailScreen(
                         host,
@@ -161,8 +172,10 @@ private fun CallListScreen(
     host: KotlinspectHost,
     state: CallListState,
     scroll: LazyListState,
+    logScroll: LazyListState,
     onOpen: (String) -> Unit,
     onClose: () -> Unit,
+    onCopied: (String) -> Unit,
 ) {
     val c = Ks.colors
     val sessions by remember { host.sessions() }.collectAsState(emptyList())
@@ -180,6 +193,7 @@ private fun CallListScreen(
     val methodCounts = remember(records) { records.groupingBy { it.method.uppercase() }.eachCount() }
     val methods = remember(methodCounts) { orderMethods(methodCounts.keys) }
     val maxDuration = remember(records) { records.maxOfOrNull { it.durationMs ?: 0 } ?: 0 }
+    val logCount by remember(sessionId) { sessionId?.let { host.logCount(it) } ?: flowOf(0) }.collectAsState(0)
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -206,6 +220,15 @@ private fun CallListScreen(
                 }
                 Spacer(Modifier.width(56.dp))
             }
+            Segmented(
+                listOf("Network · ${records.size}", "Logs · $logCount"),
+                state.tab,
+                { state.tab = it },
+                Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp),
+            )
+            if (state.tab == 1) {
+                LogsContent(host, sessionId, state, logScroll, onCopied)
+            } else {
             StatsStrip(records, Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
             SearchField(state.query, { state.query = it }, "Filter by URL, method or status", Modifier.padding(horizontal = 16.dp))
             Row(
@@ -242,6 +265,7 @@ private fun CallListScreen(
                         CallRow(record, maxDuration) { onOpen(record.id) }
                     }
                 }
+            }
             }
         }
         SessionPanel(host, state, sessions, sessionId, currentId)

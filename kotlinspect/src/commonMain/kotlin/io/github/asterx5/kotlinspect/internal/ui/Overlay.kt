@@ -72,7 +72,7 @@ import kotlin.math.roundToInt
 
 /** The bubble: a dark disc with the call count, an accent ring that spins while calls are in flight, red when errors exist. */
 @Composable
-internal fun BubbleContent(counts: BubbleCounts, modifier: Modifier = Modifier) {
+internal fun BubbleContent(counts: BubbleCounts, modifier: Modifier = Modifier, showLogCount: Boolean = true) {
     val c = Ks.colors
     val hasErrors = counts.errors > 0
     val ring = if (hasErrors) c.error else c.accent
@@ -93,6 +93,23 @@ internal fun BubbleContent(counts: BubbleCounts, modifier: Modifier = Modifier) 
             )
         }
         if (counts.inFlight > 0) Spinner(ring, 60.dp, stroke = 3.dp)
+        if (showLogCount && counts.logs > 0) {
+            // Log count: a small pill under the call count, quieter than the calls themselves.
+            Box(
+                Modifier.align(Alignment.BottomCenter)
+                    .clip(RoundedCornerShape(50))
+                    .background(LogPill)
+                    .border(1.dp, ring.copy(alpha = 0.6f), RoundedCornerShape(50))
+                    .padding(horizontal = 6.dp, vertical = 1.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                KsText(
+                    "≡ " + if (counts.logs > 999) "999+" else counts.logs.toString(),
+                    Ks.type.monoSmall.copy(color = BubbleText.copy(alpha = 0.85f), fontSize = 9.sp),
+                    maxLines = 1,
+                )
+            }
+        }
         if (hasErrors) {
             Box(
                 Modifier.align(Alignment.TopEnd).padding(top = 2.dp, end = 2.dp)
@@ -112,6 +129,7 @@ internal fun BubbleContent(counts: BubbleCounts, modifier: Modifier = Modifier) 
 // The bubble stays dark in both themes so it reads clearly over any app.
 private val BubbleInk = androidx.compose.ui.graphics.Color(KsPalette.INK)
 private val BubbleText = androidx.compose.ui.graphics.Color(KsPalette.INK_TEXT)
+private val LogPill = androidx.compose.ui.graphics.Color(0xFF2A2E38)
 
 internal val BUBBLE_SIZE = 64.dp
 
@@ -154,7 +172,8 @@ internal fun FullScreenOverlay(
             if (visible) {
                 BubbleContent(
                     counts,
-                    Modifier
+                    showLogCount = host.showLogCount,
+                    modifier = Modifier
                         .offset { IntOffset(clamped.x.roundToInt(), clamped.y.roundToInt()) }
                         .pointerInput(Unit) { detectTapGestures { onOpenInspector() } }
                         .pointerInput(maxX, maxY) {

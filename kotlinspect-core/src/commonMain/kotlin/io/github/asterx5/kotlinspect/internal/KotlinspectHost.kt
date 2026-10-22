@@ -2,6 +2,7 @@ package io.github.asterx5.kotlinspect.internal
 
 import io.github.asterx5.kotlinspect.InternalKotlinspectApi
 import io.github.asterx5.kotlinspect.internal.db.CallCounts
+import io.github.asterx5.kotlinspect.internal.db.LogEntity
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
 import io.github.asterx5.kotlinspect.internal.db.RecordSummary
 import io.github.asterx5.kotlinspect.internal.db.SessionCount
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -59,6 +61,11 @@ public class KotlinspectHost internal constructor(internal val runtime: Kotlinsp
     public fun sessionCounts(): Flow<List<SessionCount>> = runtime.database.records().observeSessionCounts()
     public fun summaries(sessionId: String): Flow<List<RecordSummary>> = runtime.database.records().observeSummaries(sessionId)
     public fun record(recordId: String): Flow<RecordEntity?> = runtime.database.records().observe(recordId)
+    public fun logs(sessionId: String): Flow<List<LogEntity>> = runtime.database.logs().observeSession(sessionId)
+    public fun logCount(sessionId: String): Flow<Int> = runtime.database.logs().observeCount(sessionId)
+
+    /** Whether the bubble shows the log count badge. */
+    public val showLogCount: Boolean get() = runtime.config.showLogCount
 
     /** Counts for [sessionId], or for whichever session is current when null. */
     public fun bubbleCounts(sessionId: String? = null): Flow<BubbleCounts> =
@@ -66,7 +73,9 @@ public class KotlinspectHost internal constructor(internal val runtime: Kotlinsp
             if (id == null) {
                 flowOf(BubbleCounts())
             } else {
-                runtime.database.records().observeCounts(id).map { c: CallCounts -> BubbleCounts(c.total, c.inFlight, c.errors) }
+                combine(runtime.database.records().observeCounts(id), runtime.database.logs().observeCount(id)) { c: CallCounts, logs ->
+                    BubbleCounts(c.total, c.inFlight, c.errors, logs)
+                }
             }
         }.distinctUntilChanged().conflate()
 

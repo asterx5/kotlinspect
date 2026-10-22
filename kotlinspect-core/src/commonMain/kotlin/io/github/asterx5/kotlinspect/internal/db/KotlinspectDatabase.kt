@@ -1,8 +1,10 @@
 package io.github.asterx5.kotlinspect.internal.db
 
+import androidx.room.AutoMigration
 import androidx.room.ConstructedBy
 import androidx.room.Dao
 import androidx.room.Database
+import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
@@ -135,7 +137,10 @@ internal interface SessionDao {
     @Query("DELETE FROM sessions WHERE id != :keepId")
     suspend fun deleteAllExcept(keepId: String)
 
-    @Query("DELETE FROM sessions WHERE id != :keepId AND id NOT IN (SELECT DISTINCT sessionId FROM records)")
+    @Query(
+        "DELETE FROM sessions WHERE id != :keepId AND id NOT IN (SELECT DISTINCT sessionId FROM records) " +
+            "AND id NOT IN (SELECT DISTINCT sessionId FROM logs)",
+    )
     suspend fun deleteEmptyExcept(keepId: String)
 
     @Query("SELECT value FROM kv WHERE `key` = :key")
@@ -145,15 +150,43 @@ internal interface SessionDao {
     suspend fun putValue(entry: KeyValueEntity)
 }
 
+@Dao
+internal interface LogDao {
+    @Insert
+    suspend fun insertAll(logs: List<LogEntity>)
+
+    @Query("SELECT * FROM logs WHERE sessionId = :sessionId ORDER BY timestamp DESC, id DESC")
+    fun observeSession(sessionId: String): Flow<List<LogEntity>>
+
+    @Query("SELECT COUNT(*) FROM logs WHERE sessionId = :sessionId")
+    fun observeCount(sessionId: String): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM logs")
+    suspend fun countAll(): Int
+
+    @Query("DELETE FROM logs WHERE sessionId = :sessionId")
+    suspend fun deleteSession(sessionId: String)
+
+    @Query("DELETE FROM logs")
+    suspend fun deleteAll()
+
+    /** Keeps the newest [keep] logs across all sessions. */
+    @Query("DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT :keep)")
+    suspend fun trimTo(keep: Int)
+}
+
 @Database(
-    entities = [RecordEntity::class, SessionEntity::class, KeyValueEntity::class],
-    version = 1,
+    entities = [RecordEntity::class, SessionEntity::class, KeyValueEntity::class, LogEntity::class],
+    version = 2,
+    // Version 2 added the logs table; the migration keeps existing calls and sessions.
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
     exportSchema = true,
 )
 @ConstructedBy(KotlinspectDatabaseConstructor::class)
 internal abstract class KotlinspectDatabase : RoomDatabase() {
     abstract fun records(): RecordDao
     abstract fun sessions(): SessionDao
+    abstract fun logs(): LogDao
 
     companion object {
         const val FILE_NAME: String = "kotlinspect.db"

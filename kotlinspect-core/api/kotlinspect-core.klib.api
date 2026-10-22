@@ -129,6 +129,9 @@ final class io.github.asterx5.kotlinspect/BubbleOptions { // io.github.asterx5.k
     final var enabled // io.github.asterx5.kotlinspect/BubbleOptions.enabled|{}enabled[0]
         final fun <get-enabled>(): kotlin/Boolean // io.github.asterx5.kotlinspect/BubbleOptions.enabled.<get-enabled>|<get-enabled>(){}[0]
         final fun <set-enabled>(kotlin/Boolean) // io.github.asterx5.kotlinspect/BubbleOptions.enabled.<set-enabled>|<set-enabled>(kotlin.Boolean){}[0]
+    final var showLogCount // io.github.asterx5.kotlinspect/BubbleOptions.showLogCount|{}showLogCount[0]
+        final fun <get-showLogCount>(): kotlin/Boolean // io.github.asterx5.kotlinspect/BubbleOptions.showLogCount.<get-showLogCount>|<get-showLogCount>(){}[0]
+        final fun <set-showLogCount>(kotlin/Boolean) // io.github.asterx5.kotlinspect/BubbleOptions.showLogCount.<set-showLogCount>|<set-showLogCount>(kotlin.Boolean){}[0]
 }
 
 final class io.github.asterx5.kotlinspect/KotlinspectCall { // io.github.asterx5.kotlinspect/KotlinspectCall|null[0]
@@ -167,6 +170,8 @@ final class io.github.asterx5.kotlinspect/KotlinspectCall { // io.github.asterx5
 final class io.github.asterx5.kotlinspect/KotlinspectConfigBuilder { // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder|null[0]
     final val bubble // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.bubble|{}bubble[0]
         final fun <get-bubble>(): io.github.asterx5.kotlinspect/BubbleOptions // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.bubble.<get-bubble>|<get-bubble>(){}[0]
+    final val logs // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.logs|{}logs[0]
+        final fun <get-logs>(): io.github.asterx5.kotlinspect/LogOptions // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.logs.<get-logs>|<get-logs>(){}[0]
     final val toast // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.toast|{}toast[0]
         final fun <get-toast>(): io.github.asterx5.kotlinspect/ToastOptions // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.toast.<get-toast>|<get-toast>(){}[0]
 
@@ -192,6 +197,7 @@ final class io.github.asterx5.kotlinspect/KotlinspectConfigBuilder { // io.githu
     final fun bodyRedactor(io.github.asterx5.kotlinspect/BodyRedactor) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.bodyRedactor|bodyRedactor(io.github.asterx5.kotlinspect.BodyRedactor){}[0]
     final fun bubble(kotlin/Function1<io.github.asterx5.kotlinspect/BubbleOptions, kotlin/Unit>) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.bubble|bubble(kotlin.Function1<io.github.asterx5.kotlinspect.BubbleOptions,kotlin.Unit>){}[0]
     final fun headerRedactor(io.github.asterx5.kotlinspect/HeaderRedactor) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.headerRedactor|headerRedactor(io.github.asterx5.kotlinspect.HeaderRedactor){}[0]
+    final fun logs(kotlin/Function1<io.github.asterx5.kotlinspect/LogOptions, kotlin/Unit>) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.logs|logs(kotlin.Function1<io.github.asterx5.kotlinspect.LogOptions,kotlin.Unit>){}[0]
     final fun redactHeaders(kotlin/Array<out kotlin/String>...) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.redactHeaders|redactHeaders(kotlin.Array<out|kotlin.String>...){}[0]
     final fun redactQueryParameters(kotlin/Array<out kotlin/String>...) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.redactQueryParameters|redactQueryParameters(kotlin.Array<out|kotlin.String>...){}[0]
     final fun retentionFor(kotlin/String, io.github.asterx5.kotlinspect/RetentionPolicy) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.retentionFor|retentionFor(kotlin.String;io.github.asterx5.kotlinspect.RetentionPolicy){}[0]
@@ -234,6 +240,15 @@ final class io.github.asterx5.kotlinspect/KotlinspectSessionContext : kotlin.cor
     final object Key : kotlin.coroutines/CoroutineContext.Key<io.github.asterx5.kotlinspect/KotlinspectSessionContext> // io.github.asterx5.kotlinspect/KotlinspectSessionContext.Key|null[0]
 }
 
+final class io.github.asterx5.kotlinspect/LogOptions { // io.github.asterx5.kotlinspect/LogOptions|null[0]
+    final var enabled // io.github.asterx5.kotlinspect/LogOptions.enabled|{}enabled[0]
+        final fun <get-enabled>(): kotlin/Boolean // io.github.asterx5.kotlinspect/LogOptions.enabled.<get-enabled>|<get-enabled>(){}[0]
+        final fun <set-enabled>(kotlin/Boolean) // io.github.asterx5.kotlinspect/LogOptions.enabled.<set-enabled>|<set-enabled>(kotlin.Boolean){}[0]
+    final var maxCount // io.github.asterx5.kotlinspect/LogOptions.maxCount|{}maxCount[0]
+        final fun <get-maxCount>(): kotlin/Int // io.github.asterx5.kotlinspect/LogOptions.maxCount.<get-maxCount>|<get-maxCount>(){}[0]
+        final fun <set-maxCount>(kotlin/Int) // io.github.asterx5.kotlinspect/LogOptions.maxCount.<set-maxCount>|<set-maxCount>(kotlin.Int){}[0]
+}
+
 final class io.github.asterx5.kotlinspect/ToastOptions { // io.github.asterx5.kotlinspect/ToastOptions|null[0]
     final var batchWindowMillis // io.github.asterx5.kotlinspect/ToastOptions.batchWindowMillis|{}batchWindowMillis[0]
         final fun <get-batchWindowMillis>(): kotlin/Long // io.github.asterx5.kotlinspect/ToastOptions.batchWindowMillis.<get-batchWindowMillis>|<get-batchWindowMillis>(){}[0]
@@ -264,6 +279,8 @@ final object io.github.asterx5.kotlinspect/Kotlinspect { // io.github.asterx5.ko
         final fun <get-isEnabled>(): kotlin/Boolean // io.github.asterx5.kotlinspect/Kotlinspect.isEnabled.<get-isEnabled>|<get-isEnabled>(){}[0]
     final val latestCall // io.github.asterx5.kotlinspect/Kotlinspect.latestCall|{}latestCall[0]
         final fun <get-latestCall>(): kotlinx.coroutines.flow/Flow<io.github.asterx5.kotlinspect/KotlinspectCall?> // io.github.asterx5.kotlinspect/Kotlinspect.latestCall.<get-latestCall>|<get-latestCall>(){}[0]
+    final val logCount // io.github.asterx5.kotlinspect/Kotlinspect.logCount|{}logCount[0]
+        final fun <get-logCount>(): kotlinx.coroutines.flow/Flow<kotlin/Int> // io.github.asterx5.kotlinspect/Kotlinspect.logCount.<get-logCount>|<get-logCount>(){}[0]
     final val sessions // io.github.asterx5.kotlinspect/Kotlinspect.sessions|{}sessions[0]
         final fun <get-sessions>(): kotlinx.coroutines.flow/Flow<kotlin.collections/List<io.github.asterx5.kotlinspect/KotlinspectSession>> // io.github.asterx5.kotlinspect/Kotlinspect.sessions.<get-sessions>|<get-sessions>(){}[0]
 

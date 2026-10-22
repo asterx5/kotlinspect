@@ -74,6 +74,17 @@ public class BubbleOptions internal constructor() {
      * place a KotlinspectOverlay. Placing one also hides the automatic bubble while it is on screen.
      */
     public var automatic: Boolean = true
+
+    /** Shows the number of KtLog entries in a small badge under the call count. */
+    public var showLogCount: Boolean = true
+}
+
+public class LogOptions internal constructor() {
+    /** Stores KtLog entries for the inspector. KtLog still prints to the console when false. */
+    public var enabled: Boolean = true
+
+    /** Newest entries kept across all sessions; older ones are removed. */
+    public var maxCount: Int = 5_000
 }
 
 public class ToastOptions internal constructor() {
@@ -125,6 +136,7 @@ public class KotlinspectConfigBuilder internal constructor() {
 
     public val bubble: BubbleOptions = BubbleOptions()
     public val toast: ToastOptions = ToastOptions()
+    public val logs: LogOptions = LogOptions()
 
     /** Replaces the values of these headers (case-insensitive) with a redaction marker. */
     public fun redactHeaders(vararg names: String) {
@@ -161,5 +173,9 @@ public class KotlinspectConfigBuilder internal constructor() {
 
     public fun toast(block: ToastOptions.() -> Unit) {
         toast.block()
+    }
+
+    public fun logs(block: LogOptions.() -> Unit) {
+        logs.block()
     }
 }

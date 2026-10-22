@@ -1,0 +1,67 @@
+public abstract interface annotation class io/github/asterx5/kotlog/InternalKotlogApi : java/lang/annotation/Annotation {
+}
+
+public final class io/github/asterx5/kotlog/KtLog {
+	public static final field INSTANCE Lio/github/asterx5/kotlog/KtLog;
+	public final fun d (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public static synthetic fun d$default (Lio/github/asterx5/kotlog/KtLog;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)V
+	public final fun e (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+	public static synthetic fun e$default (Lio/github/asterx5/kotlog/KtLog;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILjava/lang/Object;)V
+	public final fun getConsoleEnabled ()Z
+	public final fun i (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public static synthetic fun i$default (Lio/github/asterx5/kotlog/KtLog;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)V
+	public final fun log (Lio/github/asterx5/kotlog/LogLevel;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+	public static synthetic fun log$default (Lio/github/asterx5/kotlog/KtLog;Lio/github/asterx5/kotlog/LogLevel;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILjava/lang/Object;)V
+	public final fun setConsoleEnabled (Z)V
+	public final fun v (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public static synthetic fun v$default (Lio/github/asterx5/kotlog/KtLog;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)V
+	public final fun w (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+	public static synthetic fun w$default (Lio/github/asterx5/kotlog/KtLog;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILjava/lang/Object;)V
+	public final fun wtf (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;)V
+	public static synthetic fun wtf$default (Lio/github/asterx5/kotlog/KtLog;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Throwable;ILjava/lang/Object;)V
+}
+
+public final class io/github/asterx5/kotlog/KtLogEntry {
+	public fun <init> (JLio/github/asterx5/kotlog/LogLevel;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun getLayer ()Ljava/lang/String;
+	public final fun getLevel ()Lio/github/asterx5/kotlog/LogLevel;
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getTag ()Ljava/lang/String;
+	public final fun getThrowable ()Ljava/lang/String;
+	public final fun getTimestampMillis ()J
+}
+
+public abstract interface class io/github/asterx5/kotlog/KtLogSink {
+	public abstract fun record (Lio/github/asterx5/kotlog/KtLogEntry;)V
+}
+
+public final class io/github/asterx5/kotlog/KtLogSinks {
+	public static final field INSTANCE Lio/github/asterx5/kotlog/KtLogSinks;
+	public final fun register (Lio/github/asterx5/kotlog/KtLogSink;)V
+}
+
+public final class io/github/asterx5/kotlog/LogLayer : java/lang/Enum {
+	public static final field Datasource Lio/github/asterx5/kotlog/LogLayer;
+	public static final field Repository Lio/github/asterx5/kotlog/LogLayer;
+	public static final field UI Lio/github/asterx5/kotlog/LogLayer;
+	public static final field Usecase Lio/github/asterx5/kotlog/LogLayer;
+	public static final field ViewModel Lio/github/asterx5/kotlog/LogLayer;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getValue ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/asterx5/kotlog/LogLayer;
+	public static fun values ()[Lio/github/asterx5/kotlog/LogLayer;
+}
+
+public final class io/github/asterx5/kotlog/LogLevel : java/lang/Enum {
+	public static final field Assert Lio/github/asterx5/kotlog/LogLevel;
+	public static final field Debug Lio/github/asterx5/kotlog/LogLevel;
+	public static final field Error Lio/github/asterx5/kotlog/LogLevel;
+	public static final field Info Lio/github/asterx5/kotlog/LogLevel;
+	public static final field Verbose Lio/github/asterx5/kotlog/LogLevel;
+	public static final field Warn Lio/github/asterx5/kotlog/LogLevel;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getLetter ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lio/github/asterx5/kotlog/LogLevel;
+	public static fun values ()[Lio/github/asterx5/kotlog/LogLevel;
+}
+

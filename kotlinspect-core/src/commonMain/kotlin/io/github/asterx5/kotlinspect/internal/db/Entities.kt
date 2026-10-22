@@ -112,3 +112,18 @@ public data class SessionCount(
     @ColumnInfo(name = "sessionId") public val sessionId: String,
     @ColumnInfo(name = "calls") public val calls: Int,
 )
+
+/** One KtLog entry, stored in the session that was current when it was logged. */
+@io.github.asterx5.kotlinspect.InternalKotlinspectApi
+@Entity(tableName = "logs", indices = [Index("sessionId"), Index("timestamp")])
+public data class LogEntity(
+    @PrimaryKey(autoGenerate = true) public val id: Long = 0,
+    public val sessionId: String,
+    public val timestamp: Long,
+    /** A [io.github.asterx5.kotlog.LogLevel] name. */
+    public val level: String,
+    public val tag: String,
+    public val layer: String?,
+    public val message: String,
+    public val throwable: String?,
+)

@@ -4,6 +4,7 @@ import io.github.asterx5.kotlinspect.CallState
 import io.github.asterx5.kotlinspect.InternalKotlinspectApi
 import io.github.asterx5.kotlinspect.internal.KotlinspectRuntime
 import io.github.asterx5.kotlinspect.internal.callState
+import io.github.asterx5.kotlinspect.internal.db.LogEntity
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
 import io.github.asterx5.kotlinspect.internal.db.RecordSummary
 import io.github.asterx5.kotlinspect.internal.formatDuration
@@ -62,7 +63,12 @@ public fun orderMethods(present: Collection<String>): List<String> {
 }
 
 @InternalKotlinspectApi
-public data class BubbleCounts(public val total: Int = 0, public val inFlight: Int = 0, public val errors: Int = 0)
+public data class BubbleCounts(
+    public val total: Int = 0,
+    public val inFlight: Int = 0,
+    public val errors: Int = 0,
+    public val logs: Int = 0,
+)
 
 @InternalKotlinspectApi
 public data class ToastMessage(
@@ -153,6 +159,52 @@ public class ToastController internal constructor(private val runtime: Kotlinspe
         scope.cancel()
     }
 }
+
+// region Logs
+
+/**
+ * Filters logs: [query] matches the message (and tag), and each set keeps only entries whose value
+ * is in it. An empty set means no filter for that field.
+ */
+@InternalKotlinspectApi
+public fun filterLogs(
+    logs: List<LogEntity>,
+    query: String,
+    tags: Set<String>,
+    layers: Set<String>,
+    levels: Set<String>,
+): List<LogEntity> {
+    val q = query.trim()
+    return logs.filter { log ->
+        (tags.isEmpty() || log.tag in tags) &&
+            (layers.isEmpty() || (log.layer ?: NO_LAYER) in layers) &&
+            (levels.isEmpty() || log.level in levels) &&
+            (q.isEmpty() || log.message.contains(q, ignoreCase = true) || log.tag.contains(q, ignoreCase = true))
+    }
+}
+
+/** Filter value for entries logged without a layer. */
+@InternalKotlinspectApi
+public const val NO_LAYER: String = "(none)"
+
+/** Distinct values with their counts, most frequent first: the only filter options worth showing. */
+@InternalKotlinspectApi
+public fun <T> presentValues(logs: List<LogEntity>, of: (LogEntity) -> T): List<Pair<T, Int>> =
+    logs.groupingBy(of).eachCount().entries.sortedByDescending { it.value }.map { it.key to it.value }
+
+/** Levels present in [logs], in severity order (V, D, I, W, E, A). */
+@InternalKotlinspectApi
+public fun presentLevels(logs: List<LogEntity>): List<Pair<String, Int>> {
+    val counts = logs.groupingBy { it.level }.eachCount()
+    return io.github.asterx5.kotlog.LogLevel.entries.mapNotNull { level -> counts[level.name]?.let { level.name to it } }
+}
+
+/** "D" for "Debug": the one-letter form shown in lists. */
+@InternalKotlinspectApi
+public fun levelLetter(level: String): String =
+    io.github.asterx5.kotlog.LogLevel.entries.firstOrNull { it.name == level }?.letter ?: level.take(1)
+
+// endregion
 
 // region JSON tokens
 

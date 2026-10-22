@@ -78,6 +78,16 @@ public class KsPalette(
         else -> ok
     }
 
+    /** Color for a log level name (Verbose, Debug, Info, Warn, Error, Assert). */
+    public fun levelColor(level: String): Long = when (level) {
+        "Verbose" -> pending
+        "Debug" -> redirect
+        "Info" -> ok
+        "Warn" -> warn
+        "Error", "Assert" -> error
+        else -> textMuted
+    }
+
     public fun tokenColor(kind: JsonTokenKind): Long = when (kind) {
         JsonTokenKind.Key -> codeKey
         JsonTokenKind.StringValue -> codeString
