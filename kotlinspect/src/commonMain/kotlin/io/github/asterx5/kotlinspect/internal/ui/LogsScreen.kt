@@ -6,31 +6,43 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import io.github.asterx5.kotlinspect.internal.KotlinspectHost
 import io.github.asterx5.kotlinspect.internal.db.LogEntity
 import io.github.asterx5.kotlinspect.internal.formatTime
@@ -45,8 +57,9 @@ import kotlinx.coroutines.flow.flowOf
 internal fun KsColors.levelColor(level: String): Color = Color(KsPalette.of(isDark).levelColor(level))
 
 /**
- * The Logs tab: KtLog entries for one session, with search and multi-select filters. Filter
- * chips only list tags, layers and levels that actually appear in the session.
+ * The Logs tab: KtLog entries for one session, with search and multi-select filters. Level, tag
+ * and layer each get a dropdown, like the native iOS inspector, listing only the values that
+ * actually appear in the session, with their counts.
  */
 @Suppress("DEPRECATION")
 @Composable
@@ -69,27 +82,25 @@ internal fun LogsContent(
 
     Column(Modifier.fillMaxSize()) {
         SearchField(state.logQuery, { state.logQuery = it }, "Search messages", Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
-        if (levels.size > 1) {
-            FilterRow {
-                levels.forEach { (level, count) ->
-                    Chip(levelLetter(level), level in state.logLevels, count, tint = c.levelColor(level)) {
-                        state.logLevels = state.logLevels.toggle(level)
-                    }
+        // A filter with only one value has nothing to choose between, so it is left out.
+        if (levels.size > 1 || tags.size > 1 || layers.size > 1) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (levels.size > 1) {
+                    FilterMenu(
+                        title = "Level",
+                        values = levels,
+                        selected = state.logLevels,
+                        onChange = { state.logLevels = it },
+                        label = { "${levelLetter(it)}  $it" },
+                        dot = { c.levelColor(it) },
+                    )
                 }
-            }
-        }
-        if (tags.size > 1) {
-            FilterRow(label = "Tags", onClear = if (state.logTags.isEmpty()) null else ({ state.logTags = emptySet() })) {
-                tags.forEach { (tag, count) ->
-                    Chip(tag, tag in state.logTags, count) { state.logTags = state.logTags.toggle(tag) }
-                }
-            }
-        }
-        if (layers.size > 1) {
-            FilterRow(label = "Layers", onClear = if (state.logLayers.isEmpty()) null else ({ state.logLayers = emptySet() })) {
-                layers.forEach { (layer, count) ->
-                    Chip(layer, layer in state.logLayers, count, tint = c.accent) { state.logLayers = state.logLayers.toggle(layer) }
-                }
+                if (tags.size > 1) FilterMenu("Tags", tags, state.logTags, onChange = { state.logTags = it })
+                if (layers.size > 1) FilterMenu("Layers", layers, state.logLayers, onChange = { state.logLayers = it })
             }
         }
         Hairline()
@@ -122,18 +133,127 @@ private fun LogEntity.copyText(): String = buildString {
     throwable?.let { append('\n').append(it) }
 }
 
+/**
+ * One multi-select filter as a dropdown: a pill that reads "Tags ▾", or "Tags · 2 ▾" once
+ * something is picked, opening a menu of [values] with their counts and a Clear entry.
+ *
+ * The menu stays open while values are toggled, so several can be picked in one go; a tap
+ * outside, or back, closes it.
+ */
 @Composable
-private fun FilterRow(label: String? = null, onClear: (() -> Unit)? = null, content: @Composable () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (label != null) KsText(label.uppercase(), Ks.type.label)
-        content()
-        if (onClear != null) Action("Clear", onClick = onClear)
+private fun FilterMenu(
+    title: String,
+    values: List<Pair<String, Int>>,
+    selected: Set<String>,
+    onChange: (Set<String>) -> Unit,
+    label: (String) -> String = { it },
+    dot: ((String) -> Color)? = null,
+) {
+    val c = Ks.colors
+    var open by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
+    Box {
+        Row(
+            Modifier
+                .height(PILL_HEIGHT)
+                .clip(RoundedCornerShape(50))
+                .background(if (selected.isEmpty()) c.surfaceAlt else c.accent.copy(alpha = 0.18f))
+                .clickable { open = !open }
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            KsText(
+                if (selected.isEmpty()) "$title ▾" else "$title · ${selected.size} ▾",
+                Ks.type.bodyStrong,
+                color = if (selected.isEmpty()) c.text else c.accent,
+                maxLines = 1,
+            )
+        }
+        if (open) {
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(0, with(density) { (PILL_HEIGHT + 6.dp).roundToPx() }),
+                onDismissRequest = { open = false },
+                properties = PopupProperties(focusable = true),
+            ) {
+                FilterMenuPanel(
+                    title = title,
+                    values = values,
+                    selected = selected,
+                    onChange = onChange,
+                    onClear = {
+                        onChange(emptySet())
+                        open = false
+                    },
+                    label = label,
+                    dot = dot,
+                )
+            }
+        }
     }
 }
+
+/** The open menu: [values] with their counts and check marks, then Clear once anything is picked. */
+@Composable
+private fun FilterMenuPanel(
+    title: String,
+    values: List<Pair<String, Int>>,
+    selected: Set<String>,
+    onChange: (Set<String>) -> Unit,
+    onClear: () -> Unit,
+    label: (String) -> String = { it },
+    dot: ((String) -> Color)? = null,
+) {
+    val c = Ks.colors
+    Column(
+        Modifier
+            // As wide as its longest row, within bounds, rather than always the maximum.
+            .width(IntrinsicSize.Max)
+            .widthIn(min = 200.dp, max = 320.dp)
+            .heightIn(max = 380.dp)
+            .shadow(12.dp, RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(14.dp))
+            .background(c.surface)
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 6.dp),
+    ) {
+        KsText(title.uppercase(), Ks.type.label, modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
+        values.forEach { (value, count) ->
+            val on = value in selected
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { onChange(if (on) selected - value else selected + value) }
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                KsText(if (on) "✓" else "", Ks.type.bodyStrong, color = c.accent, modifier = Modifier.width(20.dp))
+                if (dot != null) {
+                    Box(Modifier.size(8.dp).clip(RoundedCornerShape(50)).background(dot(value)))
+                    Spacer(Modifier.width(8.dp))
+                }
+                KsText(label(value), Ks.type.body, maxLines = 1, modifier = Modifier.weight(1f))
+                Spacer(Modifier.width(16.dp))
+                KsText(count.toString(), Ks.type.monoSmall, color = c.textMuted, maxLines = 1)
+            }
+        }
+        if (selected.isNotEmpty()) {
+            Hairline(Modifier.padding(vertical = 4.dp))
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClear)
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                KsText("✕", Ks.type.bodyStrong, color = c.accent, modifier = Modifier.width(20.dp))
+                KsText("Clear", Ks.type.bodyStrong, color = c.accent, maxLines = 1)
+            }
+        }
+    }
+}
+
+private val PILL_HEIGHT = 32.dp
 
 @Composable
 private fun EmptyStateLogs(noLogs: Boolean) {
