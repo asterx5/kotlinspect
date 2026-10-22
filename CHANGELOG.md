@@ -2,6 +2,17 @@
 
 All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 
+## 1.0.0-beta07
+
+- Native iOS (UIKit) inspector gets the **Logs** tab: a Network/Logs switch at the top, message
+  search, multi-select Level, Tags and Layers filter menus listing only values present, with
+  counts, and a detail screen with the full message, stack trace and copy actions.
+- Native iOS bubble shows the log count under the call count, like the Compose bubble
+  (`bubble { showLogCount }` applies to both).
+- Compose Logs tab: the time now always sits at the end of the row.
+- The sample app logs every call with `KtLog` and has buttons for one entry per level and a burst.
+- Docs: a full Kotlog section in the README (Kotlin, Swift, options) and Kotlog in the agent skill.
+
 ## 1.0.0-beta06
 
 - New **Kotlog** artifact (`io.github.asterx5:kotlog`): a tiny logging API with no dependencies. `KtLog.d(TAG, "message", "datasource")`, also `v`, `i`, `w`, `e`, `wtf` and `log(LogLevel, ...)`; layers via `LogLayer.Datasource.value` (Repository, Usecase, ViewModel, UI) or any string. Entries print the platform way (Android Log, NSLog, console) and, with Kotlinspect in the app, are stored for the inspector with no setup. `kotlinspect` and `kotlinspect-core` include it.
@@ -9,7 +20,7 @@ All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 - Bubble shows a small log count under the call count (`bubble { showLogCount = false }` to hide). `Kotlinspect.logCount` flow.
 - `logs { enabled; maxCount }` options; logs are capped at 5,000 by default and cleared with their session.
 - Database version 2 with a migration that keeps existing calls and sessions.
-- Not yet in the native iOS UI: the UIKit inspector has no Logs tab and the UIKit bubble no log count. On iOS, KtLog still prints and stores entries.
+- The native iOS UI got the Logs tab and bubble log count in 1.0.0-beta07.
 
 ## 1.0.0-beta05
 

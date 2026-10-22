@@ -3,7 +3,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.asterx5/kotlinspect?label=Maven%20Central&include_prereleases)](https://central.sonatype.com/artifact/io.github.asterx5/kotlinspect)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-Latest: **1.0.0-beta06**. See the [changelog](CHANGELOG.md).
+Latest: **1.0.0-beta07**. See the [changelog](CHANGELOG.md).
 
 A network inspector for Kotlin Multiplatform apps that use Ktor. Add one dependency and every HTTP call shows up in a floating bubble, a toast, and a full inspector screen on **Android, iOS and Desktop**. It is off in release builds by default.
 
@@ -11,14 +11,15 @@ A network inspector for Kotlin Multiplatform apps that use Ktor. Add one depende
 - **Redaction**: `Authorization`, `Proxy-Authorization`, `Cookie` and `Set-Cookie` are hidden by default. You can redact more headers, query parameters or body content.
 - **Sessions**: group calls per launch, under a fixed name, or manually, and tag single requests or whole coroutines.
 - **Storage**: a private Room database with retention by age, count or size, or memory only.
-- **UI**: a draggable bubble (count, in-flight ring, error tint), toasts, and an inspector with search, filters, pretty-printed JSON and *Copy as cURL*.
+- **UI**: a draggable bubble (count, in-flight ring, error tint, log count), toasts, and an inspector with Network and Logs tabs, search, filters, pretty-printed JSON and *Copy as cURL*. Compose and native iOS (UIKit) have the same features.
+- **Logging**: `KtLog.d(TAG, "message", "datasource")` prints the platform way and shows in a Logs tab with tag, layer and level filters. See [Kotlog](#logging-with-kotlog).
 - **API**: observe counts and calls as `Flow`s to build your own indicators.
 
 ## For AI agents
 
 A ready-made skill teaches coding agents (Claude Code, and other agents that read `SKILL.md`
 skills) how to add Kotlinspect to a project: picking the right artifact, adding the dependency in
-the right module, installing the plugin, and the iOS-without-Compose setup.
+the right module, installing the plugin, logging with Kotlog, and the iOS-without-Compose setup.
 
 - **Download:** [`kotlinspect-skill.zip`](https://github.com/asterx5/kotlinspect/releases/latest/download/kotlinspect-skill.zip) from the latest release.
 - **Install for Claude Code:** unzip it into `~/.claude/skills/` (all your projects) or `.claude/skills/` in one project, so you get `skills/kotlinspect/SKILL.md`.
@@ -51,7 +52,7 @@ dependencyResolutionManagement {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.asterx5:kotlinspect:1.0.0-beta06")
+            implementation("io.github.asterx5:kotlinspect:1.0.0-beta07")
         }
     }
 }
@@ -75,29 +76,74 @@ That's all. On Android, the library's manifest picks up the app context automati
 
 ## Logging with Kotlog
 
-`KtLog` is included with Kotlinspect, and also available alone as `io.github.asterx5:kotlog`
-(no dependencies, so data and domain modules can use it). Every entry prints the platform way
-(Android `Log`, `NSLog` on iOS, the console on desktop) and appears in the inspector's **Logs**
-tab. Only what you log with `KtLog` is captured, not the rest of the console.
+**Kotlog** is a tiny logging API that ships with Kotlinspect. Every `KtLog` entry prints the usual
+way for its platform (Android `Log`/Logcat, `NSLog` on iOS, the console on desktop) and also shows
+up in the inspector's **Logs** tab, next to the network calls of the same session. Only what you log
+with `KtLog` is captured, not the rest of the console.
+
+It's included in both `kotlinspect` and `kotlinspect-core`. Modules that only log (data, domain)
+can depend on `io.github.asterx5:kotlog` alone, which has no dependencies.
+
+### Kotlin
 
 ```kotlin
+import io.github.asterx5.kotlog.KtLog
+import io.github.asterx5.kotlog.LogLayer
+import io.github.asterx5.kotlog.LogLevel
+
+private const val TAG = "FeedRepository"
+
 KtLog.d(TAG, "Loaded ${items.size} items", LogLayer.Datasource.value)
-KtLog.e(TAG, "Request failed", "repository", error)
-KtLog.log(LogLevel.Warn, TAG, "Slow response", "datasource")
+KtLog.i(TAG, "Cache hit", "repository")                      // any string works as a layer
+KtLog.w(TAG, "Slow response")                                 // the layer is optional
+KtLog.e(TAG, "Request failed", LogLayer.Repository.value, e)  // w, e and wtf take a Throwable
+KtLog.log(LogLevel.Warn, TAG, "Retrying", "datasource")       // generic: pass the level
 ```
 
-Levels are `v`, `d`, `i`, `w`, `e` and `wtf`, like Android. Layers are any string; `LogLayer`
-offers `Datasource`, `Repository`, `Usecase`, `ViewModel` and `UI` via `.value`. In the inspector
-you can search messages and filter by several tags, layers and levels at once.
+| Field | Values |
+|---|---|
+| Level | `v` Verbose, `d` Debug, `i` Info, `w` Warn, `e` Error, `wtf` Assert, like Android. `LogLevel` for `log(...)` |
+| Tag | Any string, usually the class name |
+| Message | Any string |
+| Layer | Any string, or `LogLayer.Datasource`, `Repository`, `Usecase`, `ViewModel`, `UI` via `.value` |
 
-From Swift (export `io.github.asterx5:kotlog` in the framework, like `kotlinspect-core` below):
+### Swift
+
+Export `kotlog` from your framework (see [iOS without Compose](#ios-without-compose-swiftui-or-uikit)), then:
 
 ```swift
-KtLog.shared.d(tag: "Feed", message: "Loaded", layer: LogLayer.datasource.value)
+import Shared
+
+KtLog.shared.d(tag: "Feed", message: "Loaded \(items.count) items", layer: LogLayer.datasource.value)
+KtLog.shared.e(tag: "Feed", message: "Failed: \(error)", layer: "repository", throwable: nil)
+KtLog.shared.log(level: .warn, tag: "Feed", message: "Retrying", layer: nil, throwable: nil)
 ```
 
-Options: `Kotlinspect.configure { logs { maxCount = 5_000 }; bubble { showLogCount = true } }` and
-`KtLog.consoleEnabled = false` to stop printing.
+### In the inspector
+
+- **Logs tab** in both the Compose inspector and the native iOS (UIKit) inspector: newest first,
+  level letter, tag, layer and time, with the first lines of the message.
+- **Search** by message, and **multi-select filters** for levels, tags and layers. Filters only list
+  values that appear in the session, with counts.
+- **Tap an entry** for the full message and stack trace, and copy it.
+- **Bubble**: a small log count under the call count, on every platform.
+
+### Options
+
+```kotlin
+Kotlinspect.configure {
+    logs {
+        enabled = true      // store KtLog entries for the inspector
+        maxCount = 5_000    // oldest entries are dropped past this
+    }
+    bubble { showLogCount = false }   // hide the log count on the bubble
+}
+KtLog.consoleEnabled = false          // stop printing to the console; the inspector still gets entries
+```
+
+Logs follow their session: clearing or deleting a session removes its logs too. In release builds
+(Kotlinspect inactive) `KtLog` still prints but stores nothing. `Kotlinspect.logCount` is a
+`Flow<Int>` for your own indicators.
 
 ## Placing the bubble yourself
 
@@ -133,12 +179,14 @@ kotlin {
     listOf(iosArm64(), iosSimulatorArm64()).forEach {
         it.binaries.framework {
             baseName = "Shared"
-            export("io.github.asterx5:kotlinspect-core:1.0.0-beta06")
+            export("io.github.asterx5:kotlinspect-core:1.0.0-beta07")
+            export("io.github.asterx5:kotlog:1.0.0-beta07")   // KtLog from Swift
         }
     }
     sourceSets {
         commonMain.dependencies {
-            api("io.github.asterx5:kotlinspect-core:1.0.0-beta06")
+            api("io.github.asterx5:kotlinspect-core:1.0.0-beta07")
+            api("io.github.asterx5:kotlog:1.0.0-beta07")
         }
     }
 }
@@ -179,7 +227,8 @@ view.addSubview(overlay)
 ```
 
 Open the inspector from anywhere with `KotlinspectUIKit.shared.openInspector(sessionId: nil)`.
-The native UI needs iOS 14 or newer.
+The native inspector has the same Network and Logs tabs as the Compose one, and the native bubble
+shows the log count too. It needs iOS 14 or newer.
 
 ## Requirements
 

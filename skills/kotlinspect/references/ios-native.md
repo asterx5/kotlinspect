@@ -15,11 +15,13 @@ kotlin {
         target.binaries.framework {
             baseName = "Shared"   // keep the project's existing name
             export("io.github.asterx5:kotlinspect-core:<version>")
+            export("io.github.asterx5:kotlog:<version>")   // KtLog from Swift
         }
     }
     sourceSets {
         commonMain.dependencies {
             api("io.github.asterx5:kotlinspect-core:<version>")
+            api("io.github.asterx5:kotlog:<version>")
         }
     }
 }
@@ -79,6 +81,20 @@ Add it to the root view controller's view so it covers every screen. Touches out
 pass through to the app.
 
 `KotlinspectUIKit.shared.openInspector(sessionId: nil)` opens the inspector.
+
+## 3. Logging from Swift (optional)
+
+With `kotlog` exported, Swift can log into the same inspector. Kotlin default arguments are not
+visible from Swift, so pass every argument (`nil` where unused):
+
+```swift
+KtLog.shared.d(tag: "Feed", message: "Loaded \(items.count) items", layer: LogLayer.datasource.value)
+KtLog.shared.e(tag: "Feed", message: "Failed: \(error)", layer: "repository", throwable: nil)
+KtLog.shared.log(level: .warn, tag: "Feed", message: "Retrying", layer: nil, throwable: nil)
+```
+
+Entries print with `NSLog` and appear in the native inspector's Logs tab (search plus Level, Tags
+and Layers filters) and as a small count on the bubble.
 
 ## Notes
 

@@ -58,14 +58,16 @@ private const val BUBBLE = 64.0
 private const val DISC = 50.0
 private const val MARGIN = 6.0
 private const val DRAG_SLOP = 6.0
+private const val LOG_PILL = 0xFF2A2E38
 
-/** The bubble: dark disc with the call count, a spinning arc while calls are in flight, red when errors exist. */
+/** The bubble: dark disc with the call count, a spinning arc while calls are in flight, red when errors exist, and a small log count. */
 internal class BubbleView(private val onTap: () -> Unit, private val onDragEnd: () -> Unit) :
     UIView(frame = CGRectMake(0.0, 0.0, BUBBLE, BUBBLE)) {
 
     private val disc = UIView(frame = CGRectMake((BUBBLE - DISC) / 2, (BUBBLE - DISC) / 2, DISC, DISC))
     private val count = UILabel(frame = disc.bounds)
     private val badge = UILabel(frame = CGRectMake(BUBBLE - 22.0, 0.0, 20.0, 20.0))
+    private val logs = UILabel()
     private val ring = CAShapeLayer()
 
     private var touchStart: Pair<Double, Double>? = null
@@ -114,9 +116,33 @@ internal class BubbleView(private val onTap: () -> Unit, private val onDragEnd: 
         badge.clipsToBounds = true
         badge.hidden = true
         addSubview(badge)
+
+        // Log count: a small pill under the call count, quieter than the calls themselves.
+        logs.textAlignment = NSTextAlignmentCenter
+        logs.textColor = uiColor(KsPalette.INK_TEXT).colorWithAlphaComponent(0.85)
+        logs.font = UIFont.monospacedSystemFontOfSize(9.0, UIFontWeightRegular)
+        logs.backgroundColor = uiColor(LOG_PILL)
+        logs.layer.cornerRadius = 7.0
+        logs.layer.borderWidth = 1.0
+        logs.clipsToBounds = true
+        logs.hidden = true
+        addSubview(logs)
     }
 
-    fun update(counts: BubbleCounts) {
+    fun update(counts: BubbleCounts, showLogCount: Boolean = true) {
+        val showLogs = showLogCount && counts.logs > 0
+        logs.hidden = !showLogs
+        if (showLogs) {
+            logs.text = "≡ " + if (counts.logs > 999) "999+" else counts.logs.toString()
+            logs.sizeToFit()
+            val width = logs.bounds.useContents { size.width } + 12.0
+            logs.setFrame(CGRectMake((BUBBLE - width) / 2, BUBBLE - 14.0, width, 14.0))
+            logs.layer.borderColor = uiColor(if (counts.errors > 0) palette.error else palette.accent).colorWithAlphaComponent(0.6).CGColor
+        }
+        updateCalls(counts)
+    }
+
+    private fun updateCalls(counts: BubbleCounts) {
         val hasErrors = counts.errors > 0
         val tint = uiColor(if (hasErrors) palette.error else palette.accent)
         count.text = if (counts.total > 999) "999+" else counts.total.toString()
@@ -314,7 +340,7 @@ internal class OverlayView(
         if (embedded) detach = host.attachEmbeddedOverlay()
         val t = host.toasts(sessionId)
         toasts = t
-        s.launch { host.bubbleCounts(sessionId).collect { bubble.update(it) } }
+        s.launch { host.bubbleCounts(sessionId).collect { bubble.update(it, host.showLogCount) } }
         s.launch { t.current.collect { toast.show(it) } }
         s.launch {
             combine(host.bubbleVisible, host.embeddedOverlays) { _, _ -> }.collect {

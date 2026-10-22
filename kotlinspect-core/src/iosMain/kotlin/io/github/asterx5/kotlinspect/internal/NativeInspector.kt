@@ -3,11 +3,17 @@
 package io.github.asterx5.kotlinspect.internal
 
 import io.github.asterx5.kotlinspect.CallState
+import io.github.asterx5.kotlinspect.internal.db.LogEntity
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
 import io.github.asterx5.kotlinspect.internal.db.RecordSummary
 import io.github.asterx5.kotlinspect.internal.db.SessionEntity
 import io.github.asterx5.kotlinspect.internal.uimodel.KsPalette
+import io.github.asterx5.kotlinspect.internal.uimodel.NO_LAYER
 import io.github.asterx5.kotlinspect.internal.uimodel.StatusFilter
+import io.github.asterx5.kotlinspect.internal.uimodel.filterLogs
+import io.github.asterx5.kotlinspect.internal.uimodel.levelLetter
+import io.github.asterx5.kotlinspect.internal.uimodel.presentLevels
+import io.github.asterx5.kotlinspect.internal.uimodel.presentValues
 import io.github.asterx5.kotlinspect.internal.uimodel.filterRecords
 import io.github.asterx5.kotlinspect.internal.uimodel.jsonTokens
 import io.github.asterx5.kotlinspect.internal.uimodel.looksLikeJsonLines
@@ -27,6 +33,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import platform.CoreGraphics.CGPointMake
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSAttributedString
 import platform.Foundation.NSIndexPath
@@ -38,8 +45,11 @@ import platform.UIKit.NSForegroundColorAttributeName
 import platform.UIKit.UIAction
 import platform.UIKit.UIBarButtonItem
 import platform.UIKit.UIBarButtonSystemItem
+import platform.UIKit.UIButton
+import platform.UIKit.UIButtonTypeSystem
 import platform.UIKit.UIColor
 import platform.UIKit.UIControlEventValueChanged
+import platform.UIKit.UIControlStateNormal
 import platform.UIKit.UIDevice
 import platform.UIKit.UIFont
 import platform.UIKit.UIFontWeightBold
@@ -47,7 +57,9 @@ import platform.UIKit.UIFontWeightMedium
 import platform.UIKit.UIFontWeightRegular
 import platform.UIKit.UIFontWeightSemibold
 import platform.UIKit.UIImage
+import platform.UIKit.UIImageRenderingMode
 import platform.UIKit.UILabel
+import platform.UIKit.UILayoutConstraintAxisHorizontal
 import platform.UIKit.UIMenu
 import platform.UIKit.UIMenuElementAttributesDestructive
 import platform.UIKit.UIMenuElementState
@@ -58,6 +70,7 @@ import platform.UIKit.UIScreen
 import platform.UIKit.UISearchController
 import platform.UIKit.UISearchResultsUpdatingProtocol
 import platform.UIKit.UISegmentedControl
+import platform.UIKit.UIStackView
 import platform.UIKit.UITableView
 import platform.UIKit.UITableViewCell
 import platform.UIKit.UITableViewCellAccessoryType
@@ -79,8 +92,8 @@ import platform.darwin.NSInteger
 import platform.darwin.NSObject
 
 /**
- * The inspector built from UIKit: a navigation controller with a searchable table of calls and a
- * detail screen. It reads the same database as the Compose inspector, so behavior is identical.
+ * The inspector built from UIKit: a navigation controller with Network and Logs tabs, each a
+ * searchable table with a detail screen. It reads the same database as the Compose inspector, so behavior is identical.
  */
 internal class NativeInspector(
     private val runtime: KotlinspectRuntime,
@@ -112,6 +125,7 @@ internal class NativeInspector(
     private inner class CallsScreen {
         val controller = UIViewController(nibName = null, bundle = null)
         private val table = UITableView(frame = CGRectMake(0.0, 0.0, 0.0, 0.0), style = UITableViewStyle.UITableViewStylePlain)
+        private val tabs = UISegmentedControl(items = listOf("Network", "Logs"))
         private val filter = UISegmentedControl(items = StatusFilter.entries.map { it.label })
         private val methodFilter = UISegmentedControl(items = listOf("Any"))
         private var methods: List<String> = emptyList()
@@ -119,11 +133,29 @@ internal class NativeInspector(
         private val empty = UILabel()
         private val search = UISearchController(searchResultsController = null)
         private val sessionsItem = UIBarButtonItem(image = UIImage.systemImageNamed("rectangle.stack"), menu = null)
+        private val networkHeader = UIView(frame = CGRectMake(0.0, 0.0, UIScreen.mainScreen.bounds.width(), 116.0))
+
+        // Logs tab: multi-select filters as menus, listing only values present in the session.
+        private val logHeader = UIView(frame = CGRectMake(0.0, 0.0, UIScreen.mainScreen.bounds.width(), 78.0))
+        private val levelButton = filterButton()
+        private val tagButton = filterButton()
+        private val layerButton = filterButton()
+        private val filterButtons = UIStackView(arrangedSubviews = listOf(levelButton, tagButton, layerButton))
+        private val logStats = UILabel()
 
         private val viewedSession = MutableStateFlow<String?>(startSession)
         private var all: List<RecordSummary> = emptyList()
         private var shown: List<RecordSummary> = emptyList()
         private var query = ""
+
+        private var allLogs: List<LogEntity> = emptyList()
+        private var shownLogs: List<LogEntity> = emptyList()
+        private var logQuery = ""
+        private var logTags: Set<String> = emptySet()
+        private var logLayers: Set<String> = emptySet()
+        private var logLevels: Set<String> = emptySet()
+
+        private val logsTab: Boolean get() = tabs.selectedSegmentIndex == 1L
 
         private val dataSource = DataSource()
         private val tableDelegate = TableDelegate()
@@ -137,14 +169,15 @@ internal class NativeInspector(
             table.dataSource = dataSource
             table.delegate = tableDelegate
             table.rowHeight = 64.0
+            table.estimatedRowHeight = 64.0
             table.backgroundView = empty
 
             empty.text = "Waiting for traffic"
             empty.textAlignment = platform.UIKit.NSTextAlignmentCenter
             empty.textColor = UIColor.secondaryLabelColor
+            empty.numberOfLines = 0
 
-            // Header: status filter and stats line.
-            val header = UIView(frame = CGRectMake(0.0, 0.0, UIScreen.mainScreen.bounds.width(), 116.0))
+            // Network header: status filter, method filter and stats line.
             filter.selectedSegmentIndex = 0
             filter.setFrame(CGRectMake(16.0, 8.0, UIScreen.mainScreen.bounds.width() - 32.0, 32.0))
             filter.autoresizingMask = platform.UIKit.UIViewAutoresizingFlexibleWidth
@@ -153,14 +186,29 @@ internal class NativeInspector(
             methodFilter.setFrame(CGRectMake(16.0, 46.0, UIScreen.mainScreen.bounds.width() - 32.0, 32.0))
             methodFilter.autoresizingMask = platform.UIKit.UIViewAutoresizingFlexibleWidth
             methodFilter.addAction(UIAction.actionWithHandler { _ -> refresh() }, forControlEvents = UIControlEventValueChanged)
-            header.addSubview(methodFilter)
+            networkHeader.addSubview(methodFilter)
             stats.setFrame(CGRectMake(16.0, 86.0, UIScreen.mainScreen.bounds.width() - 32.0, 22.0))
             stats.autoresizingMask = platform.UIKit.UIViewAutoresizingFlexibleWidth
             stats.font = UIFont.monospacedSystemFontOfSize(12.0, UIFontWeightMedium)
             stats.textColor = UIColor.secondaryLabelColor
-            header.addSubview(filter)
-            header.addSubview(stats)
-            table.tableHeaderView = header
+            networkHeader.addSubview(filter)
+            networkHeader.addSubview(stats)
+            table.tableHeaderView = networkHeader
+
+            // Logs header: level, tag and layer menus, then the stats line.
+            filterButtons.axis = UILayoutConstraintAxisHorizontal
+            filterButtons.spacing = 8.0
+            filterButtons.alignment = platform.UIKit.UIStackViewAlignmentCenter
+            filterButtons.setFrame(CGRectMake(16.0, 8.0, UIScreen.mainScreen.bounds.width() - 32.0, 32.0))
+            logHeader.addSubview(filterButtons)
+            logStats.autoresizingMask = platform.UIKit.UIViewAutoresizingFlexibleWidth
+            logStats.font = UIFont.monospacedSystemFontOfSize(12.0, UIFontWeightMedium)
+            logStats.textColor = UIColor.secondaryLabelColor
+            logHeader.addSubview(logStats)
+
+            tabs.selectedSegmentIndex = 0
+            tabs.addAction(UIAction.actionWithHandler { _ -> switchTab() }, forControlEvents = UIControlEventValueChanged)
+            controller.navigationItem.titleView = tabs
 
             search.searchResultsUpdater = searchUpdater
             search.obscuresBackgroundDuringPresentation = false
@@ -177,23 +225,42 @@ internal class NativeInspector(
             observe()
         }
 
+        private fun switchTab() {
+            search.searchBar.text = if (logsTab) logQuery else query
+            search.searchBar.placeholder = if (logsTab) "Search messages" else "Filter by URL, method or status"
+            table.tableHeaderView = if (logsTab) logHeader else networkHeader
+            table.rowHeight = if (logsTab) platform.UIKit.UITableViewAutomaticDimension else 64.0
+            refresh()
+            table.setContentOffset(CGPointMake(0.0, 0.0), animated = false)
+        }
+
         private fun observe() {
             scope.launch {
                 combine(runtime.database.sessions().observeAll(), runtime.currentSessionId, viewedSession) { sessions, current, viewed ->
                     Triple(sessions, current, viewed)
                 }.collect { (sessions, current, viewed) ->
                     val id = viewed?.takeIf { v -> sessions.any { it.id == v } } ?: current
-                    val session = sessions.firstOrNull { it.id == id }
-                    controller.navigationItem.title = session?.name ?: "Kotlinspect"
-                    controller.navigationItem.prompt = if (id == current) "● Recording" else "Past session"
+                    val name = sessions.firstOrNull { it.id == id }?.name ?: "Kotlinspect"
+                    controller.navigationItem.title = name
+                    // The title area holds the Network/Logs switch, so the session name goes in the prompt.
+                    controller.navigationItem.prompt = if (id == current) "● Recording · $name" else "Past session · $name"
                     sessionsItem.setMenu(sessionsMenu(sessions, id, current))
                 }
             }
+            val viewedId = combine(runtime.currentSessionId, viewedSession) { current, viewed -> viewed ?: current }
             scope.launch {
-                combine(runtime.currentSessionId, viewedSession) { current, viewed -> viewed ?: current }
+                viewedId
                     .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else runtime.database.records().observeSummaries(id) }
                     .collect { list ->
                         all = list
+                        refresh()
+                    }
+            }
+            scope.launch {
+                viewedId
+                    .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else runtime.database.logs().observeSession(id) }
+                    .collect { list ->
+                        allLogs = list
                         refresh()
                     }
             }
@@ -212,7 +279,7 @@ internal class NativeInspector(
                 add(action("New session", "plus") { viewedSession.value = runtime.startSession(null, emptySet(), emptyMap(), null) })
                 if (viewedId != null && viewedId != currentId) add(action("Record here", "record.circle") { runtime.switchSession(viewedId) })
                 if (viewedId != null) {
-                    add(action("Clear calls", "eraser") { runtime.clearSession(viewedId) })
+                    add(action("Clear calls and logs", "eraser") { runtime.clearSession(viewedId) })
                     add(action("Delete session", "trash", destructive = true) {
                         runtime.deleteSession(viewedId)
                         viewedSession.value = null
@@ -233,6 +300,14 @@ internal class NativeInspector(
         }
 
         fun refresh() {
+            tabs.setTitle("Network · ${all.size}", forSegmentAtIndex = 0u)
+            tabs.setTitle("Logs · ${allLogs.size}", forSegmentAtIndex = 1u)
+            tabs.sizeToFit()
+            if (logsTab) refreshLogs() else refreshCalls()
+            table.reloadData()
+        }
+
+        private fun refreshCalls() {
             val status = StatusFilter.entries.getOrElse(filter.selectedSegmentIndex.toInt()) { StatusFilter.All }
             updateMethodSegments()
             val method = methods.getOrNull(methodFilter.selectedSegmentIndex.toInt() - 1)
@@ -243,7 +318,85 @@ internal class NativeInspector(
                 if (done.isEmpty()) "" else "  ·  avg ${formatDuration(done.sum() / done.size)}"
             empty.text = if (all.isEmpty()) "Waiting for traffic" else "Nothing matches"
             empty.hidden = shown.isNotEmpty()
-            table.reloadData()
+        }
+
+        private fun refreshLogs() {
+            val levels = presentLevels(allLogs)
+            val tags = presentValues(allLogs) { it.tag }
+            val layers = presentValues(allLogs) { it.layer ?: NO_LAYER }
+            // Drop selections that no longer exist, e.g. after clearing the session.
+            logLevels = logLevels.intersect(levels.map { it.first }.toSet())
+            logTags = logTags.intersect(tags.map { it.first }.toSet())
+            logLayers = logLayers.intersect(layers.map { it.first }.toSet())
+
+            configure(levelButton, "Level", levels, logLevels, label = { "${levelLetter(it)}  $it" }, color = { colors.levelColor(it) }) { logLevels = it }
+            configure(tagButton, "Tags", tags, logTags) { logTags = it }
+            configure(layerButton, "Layers", layers, logLayers) { logLayers = it }
+
+            // The header shrinks to the stats line when no filter has anything to choose between.
+            val anyFilter = !levelButton.hidden || !tagButton.hidden || !layerButton.hidden
+            filterButtons.hidden = !anyFilter
+            val statsY = if (anyFilter) 48.0 else 8.0
+            val width = UIScreen.mainScreen.bounds.width()
+            logStats.setFrame(CGRectMake(16.0, statsY, width - 32.0, 22.0))
+            val height = statsY + 30.0
+            if (logHeader.frame.useContents { size.height } != height) {
+                logHeader.setFrame(CGRectMake(0.0, 0.0, width, height))
+                if (logsTab) table.tableHeaderView = logHeader
+            }
+
+            shownLogs = filterLogs(allLogs, logQuery, logTags, logLayers, logLevels)
+            val problems = allLogs.count { it.level == "Warn" || it.level == "Error" || it.level == "Assert" }
+            logStats.text = "${allLogs.size} logs  ·  $problems warnings or errors" +
+                if (shownLogs.size != allLogs.size) "  ·  ${shownLogs.size} shown" else ""
+            empty.text = if (allLogs.isEmpty()) "No logs yet\nEntries logged with KtLog appear here." else "Nothing matches"
+            empty.hidden = shownLogs.isNotEmpty()
+        }
+
+        /** Sets up one multi-select filter menu, or hides it when there is nothing to choose between. */
+        private fun configure(
+            button: UIButton,
+            title: String,
+            values: List<Pair<String, Int>>,
+            selected: Set<String>,
+            label: (String) -> String = { it },
+            color: ((String) -> Long)? = null,
+            onChange: (Set<String>) -> Unit,
+        ) {
+            button.hidden = values.size <= 1
+            // Spaces pad the title inside the pill; content insets are not available here before iOS 15.
+            button.setTitle(if (selected.isEmpty()) "   $title ▾   " else "   $title · ${selected.size} ▾   ", forState = UIControlStateNormal)
+            button.backgroundColor = if (selected.isEmpty()) colors.surfaceAlt.ui() else colors.accent.ui().colorWithAlphaComponent(0.18)
+            val options = values.map { (value, count) ->
+                UIAction.actionWithTitle(
+                    title = "${label(value)}   $count",
+                    image = color?.let { c ->
+                        UIImage.systemImageNamed("circle.fill")?.imageWithTintColor(c(value).ui(), renderingMode = UIImageRenderingMode.UIImageRenderingModeAlwaysOriginal)
+                    },
+                    identifier = null,
+                    handler = { _ ->
+                        onChange(if (value in selected) selected - value else selected + value)
+                        refresh()
+                    },
+                ).apply { if (value in selected) state = UIMenuElementState.UIMenuElementStateOn }
+            }
+            val clear = if (selected.isEmpty()) {
+                emptyList()
+            } else {
+                listOf(
+                    action("Clear", "xmark") {
+                        onChange(emptySet())
+                        refresh()
+                    },
+                )
+            }
+            button.menu = UIMenu.menuWithTitle(
+                title = "",
+                children = listOf(
+                    UIMenu.menuWithTitle(title = title, image = null, identifier = null, options = DISPLAY_INLINE, children = options),
+                    UIMenu.menuWithTitle(title = "", image = null, identifier = null, options = DISPLAY_INLINE, children = clear),
+                ),
+            )
         }
 
         /** Rebuilds the method segments when the set of methods in the session changes. */
@@ -262,48 +415,138 @@ internal class NativeInspector(
         }
 
         private inner class DataSource : NSObject(), UITableViewDataSourceProtocol {
-            override fun tableView(tableView: UITableView, numberOfRowsInSection: NSInteger): NSInteger = shown.size.toLong()
+            override fun tableView(tableView: UITableView, numberOfRowsInSection: NSInteger): NSInteger =
+                (if (logsTab) shownLogs.size else shown.size).toLong()
 
             override fun tableView(tableView: UITableView, cellForRowAtIndexPath: NSIndexPath): UITableViewCell {
-                val cell = tableView.dequeueReusableCellWithIdentifier(CELL)
-                    ?: UITableViewCell(style = UITableViewCellStyle.UITableViewCellStyleSubtitle, reuseIdentifier = CELL)
-                val r = shown[cellForRowAtIndexPath.row.toInt()]
-                cell.textLabel?.attributedText = attributed {
-                    text("${r.method.padEnd(6)} ", mono(13.0, UIFontWeightBold), colors.methodColor(r.method).ui())
-                    text(r.path, mono(13.0, UIFontWeightRegular), UIColor.labelColor)
-                }
-                cell.textLabel?.lineBreakMode = platform.UIKit.NSLineBreakByTruncatingMiddle
-                cell.detailTextLabel?.text = listOfNotNull(
-                    r.host,
-                    formatTime(r.startedAt),
-                    formatDuration(r.durationMs),
-                    r.responseBodySize?.let(::formatBytes),
-                ).joinToString("  ·  ")
-                cell.detailTextLabel?.textColor = UIColor.secondaryLabelColor
-                cell.detailTextLabel?.font = UIFont.systemFontOfSize(12.0)
-                val status = (cell.accessoryView as? UILabel) ?: UILabel().also { cell.accessoryView = it }
-                status.text = statusLabel(r)
-                status.font = mono(15.0, UIFontWeightBold)
-                status.textColor = colors.statusColor(r.callState, r.statusCode).ui()
-                status.sizeToFit()
-                return cell
+                val row = cellForRowAtIndexPath.row.toInt()
+                return if (logsTab) logCell(tableView, shownLogs[row]) else callCell(tableView, shown[row])
             }
+        }
+
+        private fun callCell(tableView: UITableView, r: RecordSummary): UITableViewCell {
+            val cell = tableView.dequeueReusableCellWithIdentifier(CELL)
+                ?: UITableViewCell(style = UITableViewCellStyle.UITableViewCellStyleSubtitle, reuseIdentifier = CELL)
+            cell.textLabel?.attributedText = attributed {
+                text("${r.method.padEnd(6)} ", mono(13.0, UIFontWeightBold), colors.methodColor(r.method).ui())
+                text(r.path, mono(13.0, UIFontWeightRegular), UIColor.labelColor)
+            }
+            cell.textLabel?.lineBreakMode = platform.UIKit.NSLineBreakByTruncatingMiddle
+            cell.detailTextLabel?.text = listOfNotNull(
+                r.host,
+                formatTime(r.startedAt),
+                formatDuration(r.durationMs),
+                r.responseBodySize?.let(::formatBytes),
+            ).joinToString("  ·  ")
+            cell.detailTextLabel?.textColor = UIColor.secondaryLabelColor
+            cell.detailTextLabel?.font = UIFont.systemFontOfSize(12.0)
+            val status = (cell.accessoryView as? UILabel) ?: UILabel().also { cell.accessoryView = it }
+            status.text = statusLabel(r)
+            status.font = mono(15.0, UIFontWeightBold)
+            status.textColor = colors.statusColor(r.callState, r.statusCode).ui()
+            status.sizeToFit()
+            return cell
+        }
+
+        /** Level letter, tag and layer on top; up to three lines of the message below. */
+        private fun logCell(tableView: UITableView, log: LogEntity): UITableViewCell {
+            val cell = tableView.dequeueReusableCellWithIdentifier(LOG_CELL)
+                ?: UITableViewCell(style = UITableViewCellStyle.UITableViewCellStyleSubtitle, reuseIdentifier = LOG_CELL)
+            cell.textLabel?.attributedText = attributed {
+                text(levelLetter(log.level), mono(13.0, UIFontWeightBold), colors.levelColor(log.level).ui())
+                text("  ${log.tag}", UIFont.systemFontOfSize(14.0, UIFontWeightSemibold), UIColor.labelColor)
+                log.layer?.let { text("  ·  $it", caption(), UIColor.secondaryLabelColor) }
+            }
+            cell.textLabel?.lineBreakMode = platform.UIKit.NSLineBreakByTruncatingTail
+            cell.detailTextLabel?.numberOfLines = 3
+            cell.detailTextLabel?.attributedText = attributed {
+                text(log.message.take(PREVIEW_CHARS), mono(12.0, UIFontWeightRegular), UIColor.labelColor)
+                if (log.throwable != null) text("\nHas a stack trace", caption(), colors.error.ui())
+            }
+            val time = (cell.accessoryView as? UILabel) ?: UILabel().also { cell.accessoryView = it }
+            time.text = formatTime(log.timestamp)
+            time.font = UIFont.systemFontOfSize(11.0)
+            time.textColor = UIColor.tertiaryLabelColor
+            time.sizeToFit()
+            return cell
         }
 
         private inner class TableDelegate : NSObject(), UITableViewDelegateProtocol {
             override fun tableView(tableView: UITableView, didSelectRowAtIndexPath: NSIndexPath) {
                 tableView.deselectRowAtIndexPath(didSelectRowAtIndexPath, animated = true)
-                val r = shown.getOrNull(didSelectRowAtIndexPath.row.toInt()) ?: return
-                showDetail(r.id)
+                val row = didSelectRowAtIndexPath.row.toInt()
+                if (logsTab) {
+                    shownLogs.getOrNull(row)?.let(::showLog)
+                } else {
+                    shown.getOrNull(row)?.let { showDetail(it.id) }
+                }
             }
         }
 
         private inner class SearchUpdater : NSObject(), UISearchResultsUpdatingProtocol {
             override fun updateSearchResultsForSearchController(searchController: UISearchController) {
-                query = searchController.searchBar.text.orEmpty()
+                val text = searchController.searchBar.text.orEmpty()
+                if (logsTab) logQuery = text else query = text
                 refresh()
             }
         }
+    }
+
+    private fun filterButton(): UIButton = UIButton.buttonWithType(UIButtonTypeSystem).apply {
+        showsMenuAsPrimaryAction = true
+        titleLabel?.font = UIFont.systemFontOfSize(14.0, UIFontWeightSemibold)
+        layer.cornerRadius = 15.0
+        heightAnchor.constraintEqualToConstant(30.0).setActive(true)
+    }
+
+    // endregion
+
+    // region Log detail
+
+    private fun showLog(log: LogEntity) {
+        val controller = UIViewController(nibName = null, bundle = null)
+        val text = UITextView(frame = controller.view.bounds)
+        text.autoresizingMask = FLEXIBLE_SIZE
+        text.setEditable(false)
+        text.setSelectable(true)
+        text.backgroundColor = UIColor.systemBackgroundColor
+        text.textContainerInset = platform.UIKit.UIEdgeInsetsMake(16.0, 12.0, 32.0, 12.0)
+        text.alwaysBounceVertical = true
+        controller.view.addSubview(text)
+        controller.navigationItem.title = log.tag
+        controller.navigationItem.rightBarButtonItem = UIBarButtonItem(
+            image = UIImage.systemImageNamed("doc.on.doc"),
+            menu = UIMenu.menuWithTitle(
+                title = "Copy",
+                children = listOfNotNull(
+                    action("Copy log", "doc.on.doc") { copy(log.copyText()) },
+                    action("Copy message", "text.alignleft") { copy(log.message) },
+                    log.throwable?.let { trace -> action("Copy stack trace", "exclamationmark.triangle") { copy(trace) } },
+                ),
+            ),
+        )
+        scope.launch {
+            text.attributedText = withContext(Dispatchers.Default) {
+                attributed {
+                    text("${log.level}\n", mono(28.0, UIFontWeightBold), colors.levelColor(log.level).ui())
+                    text(listOfNotNull(log.tag, log.layer, formatTimestamp(log.timestamp)).joinToString("  ·  ") + "\n", body(), UIColor.secondaryLabelColor)
+                    section("Message")
+                    text(log.message + "\n", mono(13.0, UIFontWeightRegular), UIColor.labelColor)
+                    log.throwable?.let { trace ->
+                        section("Stack trace")
+                        text(trace + "\n", mono(12.0, UIFontWeightRegular), colors.error.ui())
+                    }
+                }
+            }
+        }
+        (root as UINavigationController).pushViewController(controller, animated = true)
+    }
+
+    private fun LogEntity.copyText(): String = buildString {
+        append("${levelLetter(level)}/$tag")
+        layer?.let { append(" [$it]") }
+        append(": ").append(message)
+        throwable?.let { append('\n').append(it) }
     }
 
     // endregion
@@ -505,6 +748,8 @@ internal class NativeInspector(
 
     companion object {
         private const val CELL = "kotlinspect.call"
+        private const val LOG_CELL = "kotlinspect.log"
+        private const val PREVIEW_CHARS = 400
         private const val MAX_LINES = 3_000
         private val FLEXIBLE_SIZE = platform.UIKit.UIViewAutoresizingFlexibleWidth or platform.UIKit.UIViewAutoresizingFlexibleHeight
         private val DISPLAY_INLINE = platform.UIKit.UIMenuOptionsDisplayInline

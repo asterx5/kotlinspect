@@ -1,6 +1,6 @@
 # Kotlinspect: Project State
 
-*Snapshot as of 2026-10-22, release `1.0.0-beta05`. Written to bring a new collaborator (human or
+*Snapshot as of 2026-10-22, release `1.0.0-beta07`. Written to bring a new collaborator (human or
 agent) fully up to speed: what exists, how it is built, why it is built that way, what is
 verified, and what comes next.*
 
@@ -13,10 +13,12 @@ HTTP client, on **Android, iOS and desktop (JVM)**. An app adds one dependency a
 (`install(KotlinspectPlugin)`); every HTTP call then appears in a draggable **bubble**, a
 **toast** per call, and a full **inspector** (search, filters, headers, pretty JSON, copy as cURL).
 It is **off in release builds** by default, so it is safe to ship in production code.
+It also ships **Kotlog** (`KtLog.d(TAG, "msg", "datasource")`), a tiny logger whose entries print
+the platform way and appear in the inspector's **Logs** tab.
 
 - **Repo:** https://github.com/asterx5/kotlinspect (public, Apache 2.0)
-- **Maven Central:** `io.github.asterx5:kotlinspect` and `io.github.asterx5:kotlinspect-core`
-- **Latest:** `1.0.0-beta05` (published, GitHub release marked Latest)
+- **Maven Central:** `io.github.asterx5:kotlinspect`, `io.github.asterx5:kotlinspect-core` and `io.github.asterx5:kotlog`
+- **Latest:** `1.0.0-beta07` (uploaded to Central; the owner clicks Publish, then the `v1.0.0-beta07` tag creates the GitHub release)
 - **Owner:** Ahmed (GitHub `asterx5`). Built with Claude Code on Windows.
 
 The goal set by the owner: **become the go-to network inspector for KMP**, usable whether or not
@@ -34,6 +36,8 @@ the app uses Compose, with zero setup and zero risk in release builds.
 | Native iOS inspector (UIKit) | Done, ran on the owner's iPhone (beta03); beta04 sheet presentation not yet confirmed |
 | Native iOS bubble, toast, overlay view (beta05) | Done, **compiles, never run on a device** |
 | Placeable overlays + session scoping | Done, verified on Android |
+| Kotlog (`KtLog`) + Logs tab + bubble log count, Compose | Done, tested, verified on Android emulator (beta07) |
+| Logs tab + bubble log count, native iOS (UIKit) | Done (beta07), **compiles, never run on a device** |
 | `KotlinspectSwiftUI` Swift package | Done, **never compiled** (no Mac available) |
 | Minimum-version dependency floors | Done, verified with an old-toolchain Android app |
 | Publishing to Maven Central | Working (manual) |
@@ -52,6 +56,8 @@ the app uses Compose, with zero setup and zero risk in release builds.
 | beta03 | Custom design (no Material 3), big speed fix, first native UIKit inspector | yes |
 | beta04 | iOS inspector as a sheet (fixed "opens then vanishes"), method filter row | yes |
 | beta05 | Split into `kotlinspect-core` + `kotlinspect`, native iOS bubble/toast, placeable overlays with session scoping, Swift package, oldest-compatible dependency floors | yes |
+| beta06 | Kotlog (`KtLog`, new `kotlog` artifact), Compose Logs tab with tag/layer/level filters, bubble log count, database v2 migration | yes |
+| beta07 | Native iOS Logs tab and bubble log count (parity with Compose), sample KtLog demo, Kotlog docs and skill | uploaded, Publish pending |
 
 Detailed notes per version live in [`CHANGELOG.md`](../CHANGELOG.md).
 
@@ -74,6 +80,9 @@ These shaped almost every decision. Keep them when extending the library.
    Tests run against the floors; the sample app runs against the latest.
 5. **Native where it matters.** iOS UI is UIKit (no Compose needed); Android/desktop use Compose.
    One shared data model and palette keep both looking and behaving the same.
+   **Parity rule:** every UI feature lands in Compose *and* native iOS in the same release, along
+   with the README and the agent skill. beta06 shipped logs without the iOS side and the owner
+   asked that this never happen again.
 6. **Deliberate public API.** `explicitApi()` and ABI validation in both modules. Cross-module
    internals are public only behind the opt-in `@InternalKotlinspectApi` and live in the
    `internal` package, which ABI dumps exclude.
@@ -90,6 +99,7 @@ These shaped almost every decision. Keep them when extending the library.
 kotlinspect/                        repo root
 ├── kotlinspect-core/               core artifact: capture, storage, sessions, API, native iOS UI
 ├── kotlinspect/                    Compose artifact: Compose UI on top of core
+├── kotlog/                         KtLog logging API, no dependencies
 ├── shared/ androidApp/ desktopApp/ iosApp/   sample app (Compose Multiplatform)
 ├── Package.swift  swift/           optional KotlinspectSwiftUI Swift package
 ├── skills/kotlinspect/             AI agent skill (SKILL.md + references/)
@@ -128,6 +138,9 @@ kotlinspect/                        repo root
 
 - **`kotlinspect-core`** has no Compose dependency. SwiftUI/UIKit iOS apps use it alone.
 - **`kotlinspect`** depends on core (`api`), adds Compose UI. It is what most apps add.
+- **`kotlog`** (package `io.github.asterx5.kotlog`) has no dependencies. Core depends on it (`api`)
+  and registers a `KtLogSink` (ServiceLoader on Android/JVM, `@EagerInitialization` on iOS), so
+  `KtLog` entries reach the database with no setup.
 - Both share package `io.github.asterx5.kotlinspect`; internals under `...kotlinspect.internal`.
 
 ### 6.2 Capture pipeline (`KotlinspectPlugin`, `HttpCapture`)
@@ -225,7 +238,21 @@ foundation (no Material 3). Bubble and toast are dark in both themes.
 Debug build means: Android `FLAG_DEBUGGABLE`; iOS `Platform.isDebugBinary`; desktop "not a
 jpackage app" (override with `-Dkotlinspect.debug=true|false`).
 
-### 6.9 Hooks kept for v2 (built, not exposed)
+### 6.9 Logging (Kotlog)
+
+- `KtLog.v/d/i/w/e/wtf(tag, message, layer?, throwable?)` and `log(LogLevel, ...)`. Prints via
+  `android.util.Log`, `NSLog`, or stdout/stderr (`consoleEnabled` turns this off), then hands a
+  `KtLogEntry` to registered sinks. Sink failures are swallowed.
+- Core's sink forwards to the runtime, which batches entries (50 ms, up to 500) into the `logs`
+  table of the **current** session, caps messages at 32,000 chars and trims past `logs.maxCount`
+  (5,000). Release builds: printing only, nothing stored.
+- Database version 2 adds `logs` with an `AutoMigration(1 → 2)`; `MigrationTest` builds a v1 file
+  from the exported schema and checks data survives.
+- UI: Compose `LogsScreen.kt` and native `NativeInspector.kt` (Network/Logs switch, Level/Tags/Layers
+  menus). Both use the shared `filterLogs`, `presentValues`, `presentLevels` and palette
+  `levelColor`. `BubbleCounts.logs` drives the small pill on both bubbles.
+
+### 6.10 Hooks kept for v2 (built, not exposed)
 
 Generic record model (`source`/`kind` columns), `RecordSource`/`RecordSink` SPI, endpoint key
 (`GET host/users/{id}`) and fingerprint per call, the rule chain, HAR-friendly timing fields.
@@ -246,15 +273,20 @@ Kotlinspect.configure {
     redactHeaders(...); unredactHeaders(...); redactQueryParameters(...)
     headerRedactor { name, value -> ... }; bodyRedactor { type, body, isRequest -> ... }
     retentionFor("name", policy)
-    bubble { enabled; automatic }
+    bubble { enabled; automatic; showLogCount }
+    logs { enabled; maxCount }
     toast { enabled; filter; durationMillis; batchWindowMillis }
 }
 
 // Sessions and observation
 Kotlinspect.startSession(name, tags, metadata, retention); switchSession; clearSession; deleteSession; clearAll
 Kotlinspect.addSessionTags(...); putSessionMetadata(k, v)
-Kotlinspect.callCount / inFlightCount / errorCount / latestCall / calls / sessions / currentSession   // Flows
+Kotlinspect.callCount / inFlightCount / errorCount / logCount / latestCall / calls / sessions / currentSession   // Flows
 Kotlinspect.openInspector(sessionId); setBubbleVisible(...); isEnabled
+
+// Logging (kotlog)
+KtLog.v/d/i(tag, message, layer?); KtLog.w/e/wtf(tag, message, layer?, throwable?)
+KtLog.log(LogLevel, tag, message, layer?, throwable?); KtLog.consoleEnabled; LogLayer.X.value
 
 // UI
 KotlinspectOverlay(modifier, sessionId)                    // Compose
@@ -263,7 +295,7 @@ KotlinspectUIKit.shared.openInspector(sessionId:)
 KotlinspectOverlay(sessionId:) / KotlinspectInspector.open() // KotlinspectSwiftUI package
 ```
 
-Exact signatures are tracked in `kotlinspect-core/api/` and `kotlinspect/api/`.
+Exact signatures are tracked in `kotlinspect-core/api/`, `kotlinspect/api/` and `kotlog/api/`.
 
 ---
 
@@ -374,6 +406,8 @@ verified on the GitHub-login Central account.
 
 **Not verified yet (needs a Mac / iPhone):**
 - beta05 native iOS bubble, toast and `OverlayView` (drag, tap, pass-through touches, toast animation).
+- beta07 native iOS Logs tab (filter menus, self-sizing log rows, log detail) and the bubble log pill.
+- Calling `KtLog` from Swift (`KtLog.shared.d(tag:message:layer:)`) with `kotlog` exported.
 - The `KotlinspectSwiftUI` package (never compiled). It relies on the selectors
   `shared`, `makeOverlayViewSessionId:`, `openInspectorSessionId:`.
 - An iOS app on Kotlin 2.1.x consuming the klibs (Android/JVM floors are verified).
@@ -381,7 +415,8 @@ verified on the GitHub-login Central account.
 
 **Limitations:**
 - Ktor only. Retrofit/OkHttp-only Android apps capture nothing yet.
-- Swift needs the app framework to `export` `kotlinspect-core`.
+- Swift needs the app framework to `export` `kotlinspect-core` (and `kotlog` to call `KtLog`).
+- Native iOS log filter menus close after each pick (keeping them open needs iOS 16).
 - Native iOS UI needs iOS 14.
 - No CI: tests and ABI checks run only locally.
 
@@ -403,7 +438,7 @@ verified on the GitHub-login Central account.
 
 Suggested order:
 
-1. **Verify beta05 on iPhone**: the inspector sheet (beta04 fix), native bubble/toast/overlay, Swift package, SwiftUI export setup.
+1. **Verify on iPhone**: the inspector sheet (beta04 fix), native bubble/toast/overlay, the beta07 Logs tab and log pill, Swift package, SwiftUI export setup, `KtLog` from Swift.
 2. **CI workflow:** run `jvmTest` and `checkKotlinAbi` on pushes; build iOS klibs on a macOS runner.
 3. **Android-only reach:**
    - OkHttp/Retrofit interceptor feeding the same store and UI.

@@ -157,14 +157,17 @@ private fun LogRow(log: LogEntity, expanded: Boolean, onToggle: () -> Unit, onCo
         Row(verticalAlignment = Alignment.CenterVertically) {
             Tag(levelLetter(log.level), color, minWidth = 22.dp)
             Spacer(Modifier.width(8.dp))
-            KsText(log.tag, Ks.type.bodyStrong, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
-            log.layer?.let { layer ->
-                Spacer(Modifier.width(6.dp))
-                Box(Modifier.clip(RoundedCornerShape(50)).background(c.surfaceAlt).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                    KsText(layer, Ks.type.caption, maxLines = 1)
+            // Tag and layer take the free space, so the time always sits at the end.
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                KsText(log.tag, Ks.type.bodyStrong, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+                log.layer?.let { layer ->
+                    Spacer(Modifier.width(6.dp))
+                    Box(Modifier.clip(RoundedCornerShape(50)).background(c.surfaceAlt).padding(horizontal = 8.dp, vertical = 2.dp)) {
+                        KsText(layer, Ks.type.caption, maxLines = 1)
+                    }
                 }
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(8.dp))
             KsText(formatTime(log.timestamp), Ks.type.caption, maxLines = 1)
         }
         Spacer(Modifier.height(5.dp))
