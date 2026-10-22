@@ -1,6 +1,10 @@
 package io.github.asterx5.kotlinspect.internal.ui
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -27,7 +31,9 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -50,8 +56,6 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.ui.NavDisplay
 import io.github.asterx5.kotlinspect.CallState
 import io.github.asterx5.kotlinspect.internal.Codecs
 import io.github.asterx5.kotlinspect.internal.KotlinspectRuntime
@@ -125,27 +129,41 @@ internal fun filterRecords(records: List<RecordSummary>, query: String, status: 
 @Composable
 internal fun InspectorApp(runtime: KotlinspectRuntime, onClose: () -> Unit) {
     KotlinspectTheme {
+        // A two-level back stack is all the inspector needs; a navigation library would raise the
+        // Compose and Kotlin versions every app using Kotlinspect has to be on.
         val backStack = remember { mutableStateListOf<InspectorRoute>(InspectorRoute.Calls) }
         val listState = remember { CallListState() }
+        val listScroll = rememberLazyListState()
         val copied = remember { mutableStateOf<String?>(null) }
+        val goBack: () -> Unit = {
+            if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) else onClose()
+        }
+        PlatformBackHandler(onBack = goBack)
         Box(Modifier.fillMaxSize().background(Ks.colors.bg).windowInsetsPadding(WindowInsets.safeDrawing)) {
-            NavDisplay(
-                backStack = backStack,
-                onBack = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) else onClose() },
-                entryProvider = entryProvider {
-                    entry<InspectorRoute.Calls> {
-                        CallListScreen(runtime, listState, onOpen = { backStack.add(InspectorRoute.Detail(it)) }, onClose = onClose)
-                    }
-                    entry<InspectorRoute.Detail> { key ->
-                        CallDetailScreen(
-                            runtime,
-                            key.recordId,
-                            onBack = { backStack.removeAt(backStack.lastIndex) },
-                            onCopied = { copied.value = it },
-                        )
-                    }
+            AnimatedContent(
+                targetState = backStack.size to backStack.last(),
+                transitionSpec = {
+                    val forward = targetState.first > initialState.first
+                    val width = { full: Int -> if (forward) full else -full }
+                    (slideInHorizontally { width(it) } + fadeIn()) togetherWith (slideOutHorizontally { -width(it) / 4 } + fadeOut())
                 },
-            )
+            ) { (_, route) ->
+                when (route) {
+                    InspectorRoute.Calls -> CallListScreen(
+                        runtime,
+                        listState,
+                        listScroll,
+                        onOpen = { backStack.add(InspectorRoute.Detail(it)) },
+                        onClose = onClose,
+                    )
+                    is InspectorRoute.Detail -> CallDetailScreen(
+                        runtime,
+                        route.recordId,
+                        onBack = goBack,
+                        onCopied = { copied.value = it },
+                    )
+                }
+            }
             CopiedPill(copied.value, Modifier.align(Alignment.BottomCenter)) { copied.value = null }
         }
     }
@@ -170,7 +188,13 @@ private fun CopiedPill(label: String?, modifier: Modifier, onDone: () -> Unit) {
 // region Call list
 
 @Composable
-private fun CallListScreen(runtime: KotlinspectRuntime, state: CallListState, onOpen: (String) -> Unit, onClose: () -> Unit) {
+private fun CallListScreen(
+    runtime: KotlinspectRuntime,
+    state: CallListState,
+    scroll: LazyListState,
+    onOpen: (String) -> Unit,
+    onClose: () -> Unit,
+) {
     val c = Ks.colors
     val sessions by remember { runtime.database.sessions().observeAll() }.collectAsState(emptyList())
     val currentId by runtime.currentSessionId.collectAsState()
@@ -244,7 +268,7 @@ private fun CallListScreen(runtime: KotlinspectRuntime, state: CallListState, on
             if (filtered.isEmpty()) {
                 EmptyState(if (records.isEmpty()) "Waiting for traffic" else "Nothing matches", if (records.isEmpty()) "Calls made through KotlinspectPlugin appear here as they happen." else "Try another filter or search.")
             } else {
-                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
+                LazyColumn(Modifier.fillMaxSize(), state = scroll, contentPadding = PaddingValues(bottom = 32.dp)) {
                     items(filtered, key = { it.id }, contentType = { "call" }) { record ->
                         CallRow(record, maxDuration) { onOpen(record.id) }
                     }

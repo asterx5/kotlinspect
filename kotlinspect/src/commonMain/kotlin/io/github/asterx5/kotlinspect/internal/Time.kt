@@ -1,21 +1,31 @@
 package io.github.asterx5.kotlinspect.internal
 
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Instant
+/** Wall-clock fields in the device time zone. */
+internal class LocalTime(
+    val year: Int,
+    val month: Int,
+    val day: Int,
+    val hour: Int,
+    val minute: Int,
+    val second: Int,
+    val millisecond: Int,
+)
+
+/** Uses the platform's calendar, so Kotlinspect needs no date-time library. */
+internal expect fun localTime(epochMillis: Long): LocalTime
 
 private fun Int.pad(n: Int = 2) = toString().padStart(n, '0')
 
 /** "2026-10-06 19:20:05" in the device time zone. */
 internal fun formatTimestamp(millis: Long): String {
-    val t = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
-    return "${t.year}-${t.month.ordinal.plus(1).pad()}-${t.day.pad()} ${t.hour.pad()}:${t.minute.pad()}:${t.second.pad()}"
+    val t = localTime(millis)
+    return "${t.year}-${t.month.pad()}-${t.day.pad()} ${t.hour.pad()}:${t.minute.pad()}:${t.second.pad()}"
 }
 
 /** "19:20:05.123" in the device time zone. */
 internal fun formatTime(millis: Long): String {
-    val t = Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault())
-    return "${t.hour.pad()}:${t.minute.pad()}:${t.second.pad()}.${(t.nanosecond / 1_000_000).pad(3)}"
+    val t = localTime(millis)
+    return "${t.hour.pad()}:${t.minute.pad()}:${t.second.pad()}.${t.millisecond.pad(3)}"
 }
 
 internal fun formatDuration(ms: Long?): String = when {

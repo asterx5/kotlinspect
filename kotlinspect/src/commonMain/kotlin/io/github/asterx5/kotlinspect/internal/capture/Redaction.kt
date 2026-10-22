@@ -45,7 +45,8 @@ internal object EndpointKeys {
 
     /** "GET api.example.com/users/{id}/posts": ids in the path are normalized. */
     fun endpointKey(method: String, url: Url): String {
-        val path = url.segments.filter { it.isNotEmpty() }.joinToString("/") { segment ->
+        // Split encodedPath ourselves: Url.segments throws for "/" on Ktor 3.0.
+        val path = url.encodedPath.split('/').filter { it.isNotEmpty() }.joinToString("/") { segment ->
             if (uuid.matches(segment) || number.matches(segment) || hex.matches(segment)) "{id}" else segment
         }
         return "${method.uppercase()} ${url.host}/$path"

@@ -51,6 +51,22 @@ val client = HttpClient {
 
 That's all. On Android, the library's manifest picks up the app context automatically. On iOS and desktop, the bubble appears with the first call.
 
+## Requirements
+
+Kotlinspect asks for the oldest versions it works with, so it never forces your app to upgrade.
+If your app uses newer versions, Gradle keeps yours.
+
+| | Minimum |
+|---|---|
+| Kotlin | 2.1.20 |
+| Ktor client | 3.0.0 |
+| Compose Multiplatform / Jetpack Compose | 1.7.0 |
+| kotlinx-coroutines | 1.9.0 |
+| kotlinx-serialization | 1.6.3 |
+| Room / SQLite (bundled) | 2.7.0 / 2.5.0 |
+| Android | minSdk 24, compileSdk 34, AndroidX Activity 1.8.2 |
+| iOS | Native inspector on iOS 14+, Compose inspector below |
+
 ## Configuration
 
 Call `configure` early: in `Application.onCreate`, `main`, or your iOS app's init. Every option has a default.

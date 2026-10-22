@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalForeignApi::class, ExperimentalNativeApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
+@file:OptIn(ExperimentalForeignApi::class, ExperimentalNativeApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class, androidx.compose.runtime.ExperimentalComposeApi::class)
 
 package io.github.asterx5.kotlinspect.internal
 

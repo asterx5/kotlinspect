@@ -1,4 +1,18 @@
 [versions]
+# Kotlinspect's minimum dependency versions. The library asks for the oldest versions it works with,
+# so apps on newer versions keep theirs and apps on these versions are not forced to upgrade.
+# The sample app below uses the latest versions, which also exercises "app newer than library".
+ks-kotlinStdlib = "2.1.20"
+# Recorded in the AAR as the minimum compileSdk for apps; the dependencies below need 34.
+ks-compileSdk = "34"
+ks-compose = "1.7.0"
+ks-ktor = "3.0.0"
+ks-coroutines = "1.9.0"
+ks-serialization = "1.6.3"
+ks-room = "2.7.0"
+ks-sqlite = "2.5.0"
+ks-activity = "1.8.2"
+
 agp = "9.1.1"
 android-compileSdk = "37"
 android-minSdk = "24"
@@ -24,6 +38,19 @@ mavenPublish = "0.34.0"
 material3 = "1.12.0-alpha03"
 
 [libraries]
+ks-compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "ks-compose" }
+ks-compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "ks-compose" }
+ks-compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "ks-compose" }
+ks-ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ks-ktor" }
+ks-ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ks-ktor" }
+ks-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "ks-coroutines" }
+ks-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "ks-coroutines" }
+ks-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "ks-serialization" }
+ks-room-runtime = { module = "androidx.room:room-runtime", version.ref = "ks-room" }
+ks-room-compiler = { module = "androidx.room:room-compiler", version.ref = "ks-room" }
+ks-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "ks-sqlite" }
+ks-sqlite-framework = { module = "androidx.sqlite:sqlite-framework", version.ref = "ks-sqlite" }
+ks-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "ks-activity" }
 kotlinspect = { module = "io.github.asterx5:kotlinspect", version = "1.0.0-beta04" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }

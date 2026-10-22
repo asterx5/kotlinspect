@@ -33,7 +33,7 @@ kotlin {
 
     android {
         namespace = "io.github.asterx5.kotlinspect.lib"
-        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        compileSdk = libs.versions.ks.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
         compilerOptions {
@@ -42,41 +42,44 @@ kotlin {
         withHostTest {}
     }
 
+    // Built with the current compiler, but readable by apps on Kotlin 2.1.20 and newer, and
+    // depending on the 2.1.20 standard library rather than forcing the newest one.
+    coreLibrariesVersion = libs.versions.ks.kotlinStdlib.get()
+
     compilerOptions {
+        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1)
+        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1)
         freeCompilerArgs.add("-Xexpect-actual-classes")
         optIn.add("kotlin.uuid.ExperimentalUuidApi")
-        optIn.add("kotlin.time.ExperimentalTime")
     }
 
     sourceSets {
         commonMain.dependencies {
-            api(libs.ktor.client.core)
-            implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.serialization.json)
-            implementation(libs.kotlinx.datetime)
-            implementation(libs.room.runtime)
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.ui)
-            implementation(libs.navigation3.ui)
+            api(libs.ks.ktor.client.core)
+            implementation(libs.ks.coroutines.core)
+            implementation(libs.ks.serialization.json)
+            implementation(libs.ks.room.runtime)
+            implementation(libs.ks.compose.runtime)
+            implementation(libs.ks.compose.foundation)
+            implementation(libs.ks.compose.ui)
         }
         androidMain.dependencies {
-            implementation(libs.sqlite.framework)
-            implementation(libs.androidx.activity.compose)
+            implementation(libs.ks.sqlite.framework)
+            implementation(libs.ks.activity.compose)
         }
         jvmMain.dependencies {
-            implementation(libs.sqlite.bundled)
+            implementation(libs.ks.sqlite.bundled)
         }
         iosMain.dependencies {
-            implementation(libs.sqlite.bundled)
+            implementation(libs.ks.sqlite.bundled)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.ktor.client.mock)
+            implementation(libs.ks.coroutines.test)
+            implementation(libs.ks.ktor.client.mock)
         }
         jvmTest.dependencies {
-            implementation(libs.sqlite.bundled)
+            implementation(libs.ks.sqlite.bundled)
         }
     }
 }
@@ -86,10 +89,10 @@ room {
 }
 
 dependencies {
-    add("kspAndroid", libs.room.compiler)
-    add("kspJvm", libs.room.compiler)
-    add("kspIosArm64", libs.room.compiler)
-    add("kspIosSimulatorArm64", libs.room.compiler)
+    add("kspAndroid", libs.ks.room.compiler)
+    add("kspJvm", libs.ks.room.compiler)
+    add("kspIosArm64", libs.ks.room.compiler)
+    add("kspIosSimulatorArm64", libs.ks.room.compiler)
 }
 
 mavenPublishing {

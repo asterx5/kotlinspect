@@ -8,7 +8,7 @@ import io.github.asterx5.kotlinspect.internal.RecordSources
 import io.github.asterx5.kotlinspect.internal.ResolvedConfig
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
 import io.ktor.client.call.HttpClientCall
-import io.ktor.client.call.replaceResponse
+import io.ktor.client.plugins.observer.wrapWithContent
 import io.ktor.client.plugins.ResponseException
 import io.ktor.client.plugins.isSaved
 import io.ktor.client.request.HttpRequestBuilder
@@ -96,7 +96,10 @@ internal class HttpCapture private constructor(
         streaming = true
         runtime.update(record.copy(responseBodySize = declaredLength))
         val tee = tee(response, contentType, binary)
-        return response.call.replaceResponse { tee }.response
+        // wrapWithContent is deprecated in favor of replaceResponse, which only exists from Ktor 3.2.
+        // It is kept so apps on Ktor 3.0 and 3.1 can use Kotlinspect; it works on every 3.x release.
+        @Suppress("DEPRECATION")
+        return response.call.wrapWithContent(tee).response
     }
 
     private fun tee(response: HttpResponse, contentType: String?, binary: Boolean): ByteReadChannel {

@@ -69,20 +69,26 @@ public val KotlinspectPlugin: ClientPlugin<KotlinspectPluginConfig> =
             val sessionName = request.attributes.getOrNull(SessionNameKey)
                 ?: currentCoroutineContext()[KotlinspectSessionContext]?.name
                 ?: clientSession
-            val capture = HttpCapture.begin(runtime, request, body as? OutgoingContent, sessionName)
+            // Capture must never break the app's request: if Kotlinspect itself fails, the call
+            // simply goes unrecorded and proceeds untouched.
+            val capture = inspectorSafe { HttpCapture.begin(runtime, request, body as? OutgoingContent, sessionName) }
+            if (capture == null) {
+                proceed()
+                return@on
+            }
             request.attributes.put(CaptureKey, capture)
             try {
                 proceed()
-                capture.onExchangeReturned()
+                inspectorSafe { capture.onExchangeReturned() }
             } catch (e: Throwable) {
-                capture.onFailure(e)
+                inspectorSafe { capture.onFailure(e) }
                 throw e
             }
         }
 
         on(AfterReceiveHook) { response ->
             val capture = response.call.attributes.getOrNull(CaptureKey) ?: return@on
-            val replacement = capture.onResponse(response)
+            val replacement = inspectorSafe { capture.onResponse(response) }
             if (replacement != null) proceedWith(replacement)
         }
 
@@ -111,6 +117,15 @@ public class KotlinspectSessionContext(public val name: String) :
 /** Runs [block] with every call made inside it recorded in the session named [name]. */
 public suspend fun <T> withKotlinspectSession(name: String, block: suspend () -> T): T =
     withContext(KotlinspectSessionContext(name)) { block() }
+
+/** Runs inspector-side work, swallowing its failures (but never cancellation). */
+private inline fun <T> inspectorSafe(block: () -> T): T? = try {
+    block()
+} catch (e: kotlinx.coroutines.CancellationException) {
+    throw e
+} catch (_: Throwable) {
+    null
+}
 
 private val SessionNameKey = AttributeKey<String>("KotlinspectSession")
 private val CaptureKey = AttributeKey<HttpCapture>("KotlinspectCapture")
