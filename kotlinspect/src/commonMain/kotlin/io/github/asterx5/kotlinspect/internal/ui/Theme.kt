@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import io.github.asterx5.kotlinspect.CallState
+import io.github.asterx5.kotlinspect.internal.uimodel.KsPalette
 
 /** Kotlinspect's own palette: ink-dark or paper-light surfaces with a violet accent. */
 @Immutable
@@ -38,58 +39,21 @@ internal class KsColors(
     val codePunct: Color,
 )
 
-private val DarkColors = KsColors(
-    isDark = true,
-    bg = Color(0xFF0D0E12),
-    surface = Color(0xFF15171D),
-    surfaceAlt = Color(0xFF1C1F27),
-    line = Color(0xFF252933),
-    text = Color(0xFFE9EBF1),
-    textMuted = Color(0xFF9299A8),
-    textFaint = Color(0xFF5C6270),
-    accent = Color(0xFF8C7BFF),
-    onAccent = Color(0xFF0D0E12),
-    ok = Color(0xFF3DD68C),
-    redirect = Color(0xFF5AB0FF),
-    warn = Color(0xFFFFB547),
-    error = Color(0xFFFF5C6C),
-    pending = Color(0xFF8A90A0),
-    codeBg = Color(0xFF111318),
-    codeKey = Color(0xFFA8A0FF),
-    codeString = Color(0xFF7EE2A8),
-    codeNumber = Color(0xFFFFB86B),
-    codeLiteral = Color(0xFFFF7AB6),
-    codePunct = Color(0xFF6B7280),
+/** Compose colors for the shared core palette, so the Compose and native UIs always match. */
+private fun KsPalette.toColors() = KsColors(
+    isDark = isDark,
+    bg = Color(bg), surface = Color(surface), surfaceAlt = Color(surfaceAlt), line = Color(line),
+    text = Color(text), textMuted = Color(textMuted), textFaint = Color(textFaint),
+    accent = Color(accent), onAccent = Color(onAccent),
+    ok = Color(ok), redirect = Color(redirect), warn = Color(warn), error = Color(error), pending = Color(pending),
+    codeBg = Color(codeBg), codeKey = Color(codeKey), codeString = Color(codeString), codeNumber = Color(codeNumber),
+    codeLiteral = Color(codeLiteral), codePunct = Color(codePunct),
 )
 
-private val LightColors = KsColors(
-    isDark = false,
-    bg = Color(0xFFF5F6F9),
-    surface = Color(0xFFFFFFFF),
-    surfaceAlt = Color(0xFFEDEFF4),
-    line = Color(0xFFE2E5EB),
-    text = Color(0xFF14161B),
-    textMuted = Color(0xFF5D6472),
-    textFaint = Color(0xFF9AA0AB),
-    accent = Color(0xFF5B48E0),
-    onAccent = Color(0xFFFFFFFF),
-    ok = Color(0xFF0F9D58),
-    redirect = Color(0xFF1F78E0),
-    warn = Color(0xFFC77700),
-    error = Color(0xFFD92D3F),
-    pending = Color(0xFF7A808C),
-    codeBg = Color(0xFFF6F7FA),
-    codeKey = Color(0xFF4B3BD1),
-    codeString = Color(0xFF0E7A45),
-    codeNumber = Color(0xFFB45600),
-    codeLiteral = Color(0xFFC01F76),
-    codePunct = Color(0xFF8A8F99),
-)
+private val DarkColors = KsPalette.Dark.toColors()
+private val LightColors = KsPalette.Light.toColors()
 
 internal val Mono: FontFamily = FontFamily.Monospace
-
-/** The palette outside Compose, e.g. for the native iOS inspector. */
-internal fun ksColors(dark: Boolean): KsColors = if (dark) DarkColors else LightColors
 
 @Immutable
 internal class KsType(colors: KsColors) {
@@ -127,21 +91,6 @@ internal fun KotlinspectTheme(content: @Composable () -> Unit) {
     )
 }
 
-internal fun KsColors.methodColor(method: String): Color = when (method.uppercase()) {
-    "GET" -> redirect
-    "POST" -> ok
-    "PUT" -> warn
-    "PATCH" -> accent
-    "DELETE" -> error
-    else -> textMuted
-}
+internal fun KsColors.methodColor(method: String): Color = Color(KsPalette.of(isDark).methodColor(method))
 
-internal fun KsColors.statusColor(state: CallState, code: Int?): Color = when {
-    state == CallState.Pending -> pending
-    state == CallState.Failed || state == CallState.Cancelled -> error
-    code == null -> pending
-    code >= 500 -> error
-    code >= 400 -> warn
-    code >= 300 -> redirect
-    else -> ok
-}
+internal fun KsColors.statusColor(state: CallState, code: Int?): Color = Color(KsPalette.of(isDark).statusColor(state, code))

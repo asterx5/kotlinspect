@@ -3,7 +3,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.asterx5/kotlinspect?label=Maven%20Central&include_prereleases)](https://central.sonatype.com/artifact/io.github.asterx5/kotlinspect)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-Latest: **1.0.0-beta04**. See the [changelog](CHANGELOG.md).
+Latest: **1.0.0-beta05**. See the [changelog](CHANGELOG.md).
 
 A network inspector for Kotlin Multiplatform apps that use Ktor. Add one dependency and every HTTP call shows up in a floating bubble, a toast, and a full inspector screen on **Android, iOS and Desktop**. It is off in release builds by default.
 
@@ -15,6 +15,15 @@ A network inspector for Kotlin Multiplatform apps that use Ktor. Add one depende
 - **API**: observe counts and calls as `Flow`s to build your own indicators.
 
 ## Installation
+
+Kotlinspect comes in two artifacts:
+
+| Artifact | Contains | Use it when |
+|---|---|---|
+| `io.github.asterx5:kotlinspect` | Everything, with a Compose UI (bubble, toast, inspector) | Your app uses Compose Multiplatform or Jetpack Compose |
+| `io.github.asterx5:kotlinspect-core` | Capture, storage, sessions, the API and the **native iOS UI**. No Compose at all | Your iOS app uses SwiftUI or UIKit, or you only need capture |
+
+`kotlinspect` includes `kotlinspect-core`, so you only ever add one of them.
 
 ```kotlin
 // settings.gradle.kts
@@ -29,7 +38,7 @@ dependencyResolutionManagement {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation("io.github.asterx5:kotlinspect:1.0.0-beta04")
+            implementation("io.github.asterx5:kotlinspect:1.0.0-beta05")
         }
     }
 }
@@ -38,7 +47,7 @@ kotlin {
 To use a local build in your other projects:
 
 ```bash
-./gradlew :kotlinspect:publishToMavenLocal
+./gradlew :kotlinspect-core:publishToMavenLocal :kotlinspect:publishToMavenLocal
 ```
 
 Then install the plugin in your client:
@@ -50,6 +59,88 @@ val client = HttpClient {
 ```
 
 That's all. On Android, the library's manifest picks up the app context automatically. On iOS and desktop, the bubble appears with the first call.
+
+## Placing the bubble yourself
+
+By default the bubble floats over every screen. You can instead place it in your own UI, for
+example only on a debug screen, or scoped to one session. While a placed overlay is on screen,
+the automatic bubble hides. Pass a `sessionId` to count, toast and open only that session; leave it
+out for the current session.
+
+**Compose** (Android, desktop and Compose Multiplatform iOS):
+
+```kotlin
+Box(Modifier.fillMaxSize()) {
+    AppContent()
+    KotlinspectOverlay()                       // current session
+    // KotlinspectOverlay(sessionId = checkoutId) // only one session
+}
+```
+
+To never show the automatic bubble, only placed ones:
+
+```kotlin
+Kotlinspect.configure { bubble { automatic = false } }
+```
+
+## iOS without Compose (SwiftUI or UIKit)
+
+Use `kotlinspect-core`: the bubble, toast and inspector are native UIKit, so no Compose is
+linked into your app. Swift can only see Kotlin classes your framework exports, so export it once
+in the shared module that builds your iOS framework:
+
+```kotlin
+kotlin {
+    listOf(iosArm64(), iosSimulatorArm64()).forEach {
+        it.binaries.framework {
+            baseName = "Shared"
+            export("io.github.asterx5:kotlinspect-core:1.0.0-beta05")
+        }
+    }
+    sourceSets {
+        commonMain.dependencies {
+            api("io.github.asterx5:kotlinspect-core:1.0.0-beta05")
+        }
+    }
+}
+```
+
+Without any Swift code the bubble already appears automatically. To place it yourself:
+
+**SwiftUI**: add the Swift package from this repository
+(`https://github.com/asterx5/kotlinspect`, product `KotlinspectSwiftUI`), then:
+
+```swift
+import KotlinspectSwiftUI
+
+ContentView()
+    .overlay(KotlinspectOverlay())               // current session
+    // .overlay(KotlinspectOverlay(sessionId: id)) // only one session
+```
+
+Or, without the package, wrap the view yourself:
+
+```swift
+struct KotlinspectOverlay: UIViewRepresentable {
+    var sessionId: String? = nil
+    func makeUIView(context: Context) -> UIView {
+        KotlinspectUIKit.shared.makeOverlayView(sessionId: sessionId)
+    }
+    func updateUIView(_ uiView: UIView, context: Context) {}
+}
+```
+
+**UIKit**:
+
+```swift
+let overlay = KotlinspectUIKit.shared.makeOverlayView(sessionId: nil)
+overlay.frame = view.bounds
+overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+view.addSubview(overlay)
+```
+
+Open the inspector from anywhere with `KotlinspectUIKit.shared.openInspector(sessionId: nil)`.
+The native UI needs iOS 14 or newer.
 
 ## Requirements
 
@@ -149,13 +240,15 @@ Use `enabled = false` as a master switch in any build.
 
 ## Project layout
 
-- `kotlinspect/`: the library.
+- `kotlinspect-core/`: capture, storage, sessions, the public API and the native iOS UI.
+- `kotlinspect/`: the Compose UI on top of core.
+- `Package.swift`, `swift/`: the optional `KotlinspectSwiftUI` Swift package.
 - `shared/`, `androidApp/`, `desktopApp/`, `iosApp/`: a sample app with a playground and a Postman-style request builder. It consumes the library from Maven Local, the same way other apps do.
 
 ```bash
-./gradlew :kotlinspect:jvmTest          # tests
-./gradlew :kotlinspect:checkKotlinAbi   # public API check (updateKotlinAbi after deliberate changes)
-./gradlew :kotlinspect:publishToMavenLocal
+./gradlew :kotlinspect-core:jvmTest     # tests
+./gradlew checkKotlinAbi                # public API check for both modules (updateKotlinAbi after deliberate changes)
+./gradlew :kotlinspect-core:publishToMavenLocal :kotlinspect:publishToMavenLocal
 ./gradlew :androidApp:assembleDebug
 ./gradlew :desktopApp:run
 ```

@@ -43,7 +43,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.asterx5.kotlinspect.internal.KotlinspectRuntime
+import io.github.asterx5.kotlinspect.internal.KotlinspectHost
+import io.github.asterx5.kotlinspect.internal.uimodel.BubbleCounts
+import io.github.asterx5.kotlinspect.internal.uimodel.KsPalette
+import io.github.asterx5.kotlinspect.internal.uimodel.ToastController
+import io.github.asterx5.kotlinspect.internal.uimodel.ToastMessage
 import io.github.asterx5.kotlinspect.internal.db.CallCounts
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
 import io.github.asterx5.kotlinspect.internal.formatDuration
@@ -65,19 +69,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-
-@Immutable
-internal data class BubbleCounts(val total: Int = 0, val inFlight: Int = 0, val errors: Int = 0)
-
-/** One aggregate query per change, deduplicated and conflated so bursts cost little. */
-@OptIn(ExperimentalCoroutinesApi::class)
-internal fun KotlinspectRuntime.bubbleCounts(): Flow<BubbleCounts> = currentSessionId.flatMapLatest { id ->
-    if (id == null) {
-        flowOf(BubbleCounts())
-    } else {
-        database.records().observeCounts(id).map { c: CallCounts -> BubbleCounts(c.total, c.inFlight, c.errors) }
-    }
-}.distinctUntilChanged().conflate()
 
 /** The bubble: a dark disc with the call count, an accent ring that spins while calls are in flight, red when errors exist. */
 @Composable
@@ -119,8 +110,8 @@ internal fun BubbleContent(counts: BubbleCounts, modifier: Modifier = Modifier) 
 }
 
 // The bubble stays dark in both themes so it reads clearly over any app.
-private val BubbleInk = androidx.compose.ui.graphics.Color(0xFF15171D)
-private val BubbleText = androidx.compose.ui.graphics.Color(0xFFF2F3F7)
+private val BubbleInk = androidx.compose.ui.graphics.Color(KsPalette.INK)
+private val BubbleText = androidx.compose.ui.graphics.Color(KsPalette.INK_TEXT)
 
 internal val BUBBLE_SIZE = 64.dp
 
@@ -134,9 +125,18 @@ internal object BubblePosition {
  * pointer handler let touches through to the app underneath.
  */
 @Composable
-internal fun FullScreenOverlay(runtime: KotlinspectRuntime, toasts: ToastController, onOpenInspector: () -> Unit) {
-    val counts by remember(runtime) { runtime.bubbleCounts() }.collectAsState(BubbleCounts())
-    val visible by runtime.bubbleVisible.collectAsState()
+internal fun FullScreenOverlay(
+    host: KotlinspectHost,
+    toasts: ToastController,
+    sessionId: String? = null,
+    automatic: Boolean = true,
+    onOpenInspector: () -> Unit,
+) {
+    val counts by remember(host, sessionId) { host.bubbleCounts(sessionId) }.collectAsState(BubbleCounts())
+    val bubbleVisible by host.bubbleVisible.collectAsState()
+    val embedded by host.embeddedOverlays.collectAsState()
+    // The automatic overlay steps aside while an overlay placed in the app's UI is showing.
+    val visible = bubbleVisible && host.isActive && (!automatic || embedded == 0)
     val toast by toasts.current.collectAsState()
     val density = LocalDensity.current
 
@@ -149,7 +149,7 @@ internal fun FullScreenOverlay(runtime: KotlinspectRuntime, toasts: ToastControl
             }
             val clamped = Offset(offset.x.coerceIn(0f, maxX.coerceAtLeast(0f)), offset.y.coerceIn(0f, maxY.coerceAtLeast(0f)))
 
-            ToastHost(toast, Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
+            ToastHost(if (automatic && embedded > 0) null else toast, Modifier.align(Alignment.TopCenter).padding(top = 8.dp))
 
             if (visible) {
                 BubbleContent(
@@ -174,89 +174,6 @@ internal fun FullScreenOverlay(runtime: KotlinspectRuntime, toasts: ToastControl
                         },
                 )
             }
-        }
-    }
-}
-
-// region Toast
-
-@Immutable
-internal data class ToastMessage(
-    val id: Long,
-    val title: String,
-    val subtitle: String?,
-    val isError: Boolean,
-    val method: String? = null,
-    val status: String? = null,
-)
-
-internal fun buildToast(id: Long, records: List<RecordEntity>): ToastMessage? {
-    if (records.isEmpty()) return null
-    val last = records.last()
-    fun line(r: RecordEntity): String {
-        val status = r.statusCode?.toString() ?: r.state.uppercase()
-        return "${r.method} ${r.path} · $status · ${formatDuration(r.durationMs)}"
-    }
-    if (records.size == 1) {
-        return ToastMessage(
-            id = id,
-            title = line(last),
-            subtitle = null,
-            isError = last.isError,
-            method = last.method,
-            status = last.statusCode?.toString() ?: last.state.uppercase(),
-        )
-    }
-    val errors = records.count { it.isError }
-    val title = buildString {
-        append("${records.size} calls")
-        if (errors > 0) append(" · $errors failed")
-    }
-    return ToastMessage(id, title, "Latest: ${line(last)}", errors > 0)
-}
-
-/**
- * Turns finished calls into toasts. Calls finishing within the batch window are combined into
- * one toast, and a new toast replaces the one on screen.
- */
-internal class ToastController(private val runtime: KotlinspectRuntime) {
-    // Single-threaded so the batch list needs no locking.
-    private val scope = CoroutineScope(runtime.scope.coroutineContext + Dispatchers.Default.limitedParallelism(1))
-
-    private val _current = MutableStateFlow<ToastMessage?>(null)
-    val current: StateFlow<ToastMessage?> = _current.asStateFlow()
-
-    private val pending = mutableListOf<RecordEntity>()
-    private var batchJob: Job? = null
-    private var hideJob: Job? = null
-    private var nextId = 0L
-
-    init {
-        scope.launch {
-            runtime.completed.collect { record ->
-                val config = runtime.config
-                if (!config.toastEnabled || !config.enabled) return@collect
-                if (!runCatching { config.toastFilter.shouldShow(record.toCall()) }.getOrDefault(false)) return@collect
-                pending += record
-                if (batchJob?.isActive != true) {
-                    batchJob = scope.launch {
-                        delay(config.toastBatchWindowMillis)
-                        val batch = pending.toList()
-                        pending.clear()
-                        show(buildToast(nextId++, batch))
-                    }
-                }
-            }
-        }
-    }
-
-    private fun show(message: ToastMessage?) {
-        message ?: return
-        _current.value = message
-        hideJob?.cancel()
-        hideJob = scope.launch {
-            delay(runtime.config.toastDurationMillis)
-            _current.value = null
         }
     }
 }
@@ -293,12 +210,13 @@ internal fun ToastCard(message: ToastMessage, modifier: Modifier = Modifier) {
     ) {
         Dot(accent, 9.dp)
         Spacer(Modifier.width(10.dp))
-        if (message.method != null) {
-            MethodBadge(message.method)
+        val method = message.method
+        if (method != null) {
+            MethodBadge(method)
             Spacer(Modifier.width(8.dp))
         }
         Column(Modifier.weight(1f, fill = false)) {
-            val title = if (message.method != null) message.title.removePrefix(message.method).trimStart() else message.title
+            val title = if (method != null) message.title.removePrefix(method).trimStart() else message.title
             KsText(title, Ks.type.monoSmall.copy(color = BubbleText), maxLines = 1)
             message.subtitle?.let {
                 KsText(it, Ks.type.caption.copy(color = BubbleText.copy(alpha = 0.6f)), maxLines = 1)

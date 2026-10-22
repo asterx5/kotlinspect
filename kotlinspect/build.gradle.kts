@@ -5,8 +5,6 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.ksp)
-    alias(libs.plugins.room)
     alias(libs.plugins.mavenPublish)
 }
 
@@ -50,49 +48,24 @@ kotlin {
         languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1)
         apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1)
         freeCompilerArgs.add("-Xexpect-actual-classes")
-        optIn.add("kotlin.uuid.ExperimentalUuidApi")
+        optIn.add("io.github.asterx5.kotlinspect.InternalKotlinspectApi")
     }
 
     sourceSets {
         commonMain.dependencies {
-            api(libs.ks.ktor.client.core)
+            api(project(":kotlinspect-core"))
             implementation(libs.ks.coroutines.core)
-            implementation(libs.ks.serialization.json)
-            implementation(libs.ks.room.runtime)
             implementation(libs.ks.compose.runtime)
             implementation(libs.ks.compose.foundation)
             implementation(libs.ks.compose.ui)
         }
         androidMain.dependencies {
-            implementation(libs.ks.sqlite.framework)
             implementation(libs.ks.activity.compose)
-        }
-        jvmMain.dependencies {
-            implementation(libs.ks.sqlite.bundled)
-        }
-        iosMain.dependencies {
-            implementation(libs.ks.sqlite.bundled)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
-            implementation(libs.ks.coroutines.test)
-            implementation(libs.ks.ktor.client.mock)
-        }
-        jvmTest.dependencies {
-            implementation(libs.ks.sqlite.bundled)
         }
     }
-}
-
-room {
-    schemaDirectory("$projectDir/schemas")
-}
-
-dependencies {
-    add("kspAndroid", libs.ks.room.compiler)
-    add("kspJvm", libs.ks.room.compiler)
-    add("kspIosArm64", libs.ks.room.compiler)
-    add("kspIosSimulatorArm64", libs.ks.room.compiler)
 }
 
 mavenPublishing {

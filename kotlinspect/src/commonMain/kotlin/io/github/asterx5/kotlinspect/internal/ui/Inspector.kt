@@ -58,7 +58,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import io.github.asterx5.kotlinspect.CallState
 import io.github.asterx5.kotlinspect.internal.Codecs
-import io.github.asterx5.kotlinspect.internal.KotlinspectRuntime
+import io.github.asterx5.kotlinspect.internal.KotlinspectHost
+import io.github.asterx5.kotlinspect.internal.uimodel.StatusFilter
+import io.github.asterx5.kotlinspect.internal.uimodel.filterRecords
+import io.github.asterx5.kotlinspect.internal.uimodel.looksLikeJsonLines
+import io.github.asterx5.kotlinspect.internal.uimodel.orderMethods
+import io.github.asterx5.kotlinspect.internal.uimodel.toCurl
 import io.github.asterx5.kotlinspect.internal.callState
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
 import io.github.asterx5.kotlinspect.internal.db.RecordSummary
@@ -80,23 +85,6 @@ internal sealed interface InspectorRoute {
     data class Detail(val recordId: String) : InspectorRoute
 }
 
-internal enum class StatusFilter(val label: String) {
-    All("All"), Success("2xx"), Redirect("3xx"), ClientError("4xx"), ServerError("5xx"), Failed("Failed"), Pending("Live");
-
-    fun matches(r: RecordSummary): Boolean {
-        val code = r.statusCode ?: 0
-        return when (this) {
-            All -> true
-            Success -> code in 200..299
-            Redirect -> code in 300..399
-            ClientError -> code in 400..499
-            ServerError -> code >= 500
-            Failed -> r.callState == CallState.Failed || r.callState == CallState.Cancelled
-            Pending -> r.callState == CallState.Pending
-        }
-    }
-}
-
 /** List state hoisted above navigation so it survives opening a call. */
 @Stable
 internal class CallListState {
@@ -107,32 +95,13 @@ internal class CallListState {
     var sessionsOpen: Boolean by mutableStateOf(false)
 }
 
-/** Order for method filters: the common ones first, then any others alphabetically. */
-internal val COMMON_METHODS: List<String> = listOf("GET", "POST", "PUT", "PATCH", "DELETE")
-
-/** The methods present in a session, in filter order. */
-internal fun orderMethods(present: Collection<String>): List<String> {
-    val upper = present.map { it.uppercase() }.toSet()
-    return COMMON_METHODS.filter { it in upper } + (upper - COMMON_METHODS.toSet()).sorted()
-}
-
-internal fun filterRecords(records: List<RecordSummary>, query: String, status: StatusFilter, method: String?): List<RecordSummary> {
-    val q = query.trim()
-    return records.filter { r ->
-        status.matches(r) &&
-            (method == null || r.method.equals(method, ignoreCase = true)) &&
-            (q.isEmpty() || r.url.contains(q, ignoreCase = true) || r.method.contains(q, ignoreCase = true) ||
-                r.statusCode?.toString()?.contains(q) == true)
-    }
-}
-
 @Composable
-internal fun InspectorApp(runtime: KotlinspectRuntime, onClose: () -> Unit) {
+internal fun InspectorApp(host: KotlinspectHost, initialSessionId: String? = null, onClose: () -> Unit) {
     KotlinspectTheme {
         // A two-level back stack is all the inspector needs; a navigation library would raise the
         // Compose and Kotlin versions every app using Kotlinspect has to be on.
         val backStack = remember { mutableStateListOf<InspectorRoute>(InspectorRoute.Calls) }
-        val listState = remember { CallListState() }
+        val listState = remember { CallListState().apply { viewedSessionId = initialSessionId } }
         val listScroll = rememberLazyListState()
         val copied = remember { mutableStateOf<String?>(null) }
         val goBack: () -> Unit = {
@@ -150,14 +119,14 @@ internal fun InspectorApp(runtime: KotlinspectRuntime, onClose: () -> Unit) {
             ) { (_, route) ->
                 when (route) {
                     InspectorRoute.Calls -> CallListScreen(
-                        runtime,
+                        host,
                         listState,
                         listScroll,
                         onOpen = { backStack.add(InspectorRoute.Detail(it)) },
                         onClose = onClose,
                     )
                     is InspectorRoute.Detail -> CallDetailScreen(
-                        runtime,
+                        host,
                         route.recordId,
                         onBack = goBack,
                         onCopied = { copied.value = it },
@@ -189,19 +158,19 @@ private fun CopiedPill(label: String?, modifier: Modifier, onDone: () -> Unit) {
 
 @Composable
 private fun CallListScreen(
-    runtime: KotlinspectRuntime,
+    host: KotlinspectHost,
     state: CallListState,
     scroll: LazyListState,
     onOpen: (String) -> Unit,
     onClose: () -> Unit,
 ) {
     val c = Ks.colors
-    val sessions by remember { runtime.database.sessions().observeAll() }.collectAsState(emptyList())
-    val currentId by runtime.currentSessionId.collectAsState()
+    val sessions by remember { host.sessions() }.collectAsState(emptyList())
+    val currentId by host.currentSessionId.collectAsState()
     val sessionId = state.viewedSessionId?.takeIf { id -> sessions.isEmpty() || sessions.any { it.id == id } } ?: currentId
     val session = sessions.firstOrNull { it.id == sessionId }
     val records by remember(sessionId) {
-        sessionId?.let { runtime.database.records().observeSummaries(it) } ?: flowOf(emptyList())
+        sessionId?.let { host.summaries(it) } ?: flowOf(emptyList())
     }.collectAsState(emptyList())
 
     val filtered = remember(records, state.query, state.status, state.method) {
@@ -275,7 +244,7 @@ private fun CallListScreen(
                 }
             }
         }
-        SessionPanel(runtime, state, sessions, sessionId, currentId)
+        SessionPanel(host, state, sessions, sessionId, currentId)
     }
 }
 
@@ -351,8 +320,9 @@ private fun CallRow(record: RecordSummary, maxDuration: Long, onClick: () -> Uni
         }
         Spacer(Modifier.height(9.dp))
         // Duration relative to the slowest call, on a log scale so fast calls stay visible.
-        val fraction = if (maxDuration <= 0 || record.durationMs == null) 0.02f
-        else (ln(1.0 + record.durationMs) / ln(1.0 + maxDuration)).toFloat().coerceIn(0.02f, 1f)
+        val duration = record.durationMs
+        val fraction = if (maxDuration <= 0 || duration == null) 0.02f
+        else (ln(1.0 + duration) / ln(1.0 + maxDuration)).toFloat().coerceIn(0.02f, 1f)
         Box(Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(c.surfaceAlt)) {
             Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(color.copy(alpha = 0.8f)))
         }
@@ -369,7 +339,7 @@ private fun statusLabel(r: RecordSummary): String = when (r.callState) {
 
 @Composable
 private fun SessionPanel(
-    runtime: KotlinspectRuntime,
+    host: KotlinspectHost,
     state: CallListState,
     sessions: List<SessionEntity>,
     viewedId: String?,
@@ -383,7 +353,7 @@ private fun SessionPanel(
         )
     }
     AnimatedVisibility(state.sessionsOpen, enter = slideInVertically { -it }, exit = slideOutVertically { -it }) {
-        val counts by remember { runtime.database.records().observeSessionCounts() }.collectAsState(emptyList())
+        val counts by remember { host.sessionCounts() }.collectAsState(emptyList())
         var confirmClearAll by remember { mutableStateOf(false) }
         Column(
             Modifier.fillMaxWidth()
@@ -437,22 +407,22 @@ private fun SessionPanel(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Chip("+ New", false, tint = c.accent) {
-                    state.viewedSessionId = runtime.startSession(null, emptySet(), emptyMap(), null)
+                    state.viewedSessionId = host.startSession()
                     state.sessionsOpen = false
                 }
                 if (viewedId != null && viewedId != currentId) {
-                    Chip("Record here", false) { runtime.switchSession(viewedId) }
+                    Chip("Record here", false) { host.switchSession(viewedId) }
                 }
                 if (viewedId != null) {
-                    Chip("Clear calls", false) { runtime.clearSession(viewedId) }
+                    Chip("Clear calls", false) { host.clearSession(viewedId) }
                     Chip("Delete", false) {
-                        runtime.deleteSession(viewedId)
+                        host.deleteSession(viewedId)
                         state.viewedSessionId = null
                     }
                 }
                 Chip(if (confirmClearAll) "Tap again to clear all" else "Clear all", confirmClearAll, tint = c.error) {
                     if (confirmClearAll) {
-                        runtime.clearAll()
+                        host.clearAll()
                         state.viewedSessionId = null
                         state.sessionsOpen = false
                     }
@@ -472,9 +442,9 @@ private enum class DetailTab(val label: String) { Overview("Overview"), Request(
 @OptIn(ExperimentalFoundationApi::class)
 @Suppress("DEPRECATION")
 @Composable
-private fun CallDetailScreen(runtime: KotlinspectRuntime, recordId: String, onBack: () -> Unit, onCopied: (String) -> Unit) {
+private fun CallDetailScreen(host: KotlinspectHost, recordId: String, onBack: () -> Unit, onCopied: (String) -> Unit) {
     val c = Ks.colors
-    val record by remember(recordId) { runtime.database.records().observe(recordId) }.collectAsState(null)
+    val record by remember(recordId) { host.record(recordId) }.collectAsState(null)
     var tab by remember { mutableStateOf(DetailTab.Overview) }
     val clipboard = LocalClipboardManager.current
     val copy: (String, String) -> Unit = { label, text ->
@@ -632,9 +602,12 @@ private fun UrlBlock(r: RecordEntity, copy: (String, String) -> Unit) {
 @Composable
 private fun TimingCard(r: RecordEntity) {
     val c = Ks.colors
-    val send = r.requestSentAt?.let { it - r.startedAt }?.coerceAtLeast(0)
-    val wait = if (r.requestSentAt != null && r.responseStartedAt != null) (r.responseStartedAt - r.requestSentAt).coerceAtLeast(0) else null
-    val receive = if (r.responseStartedAt != null && r.completedAt != null) (r.completedAt - r.responseStartedAt).coerceAtLeast(0) else null
+    val sentAt = r.requestSentAt
+    val responseAt = r.responseStartedAt
+    val completedAt = r.completedAt
+    val send = sentAt?.let { it - r.startedAt }?.coerceAtLeast(0)
+    val wait = if (sentAt != null && responseAt != null) (responseAt - sentAt).coerceAtLeast(0) else null
+    val receive = if (responseAt != null && completedAt != null) (completedAt - responseAt).coerceAtLeast(0) else null
     val phases = listOfNotNull(
         send?.let { Triple("Send", it, c.redirect) },
         wait?.let { Triple("Wait", it, c.warn) },

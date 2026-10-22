@@ -2,6 +2,15 @@
 
 All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 
+## 1.0.0-beta05
+
+- New `kotlinspect-core` artifact: capture, storage, sessions, the API and a native UIKit bubble, toast and inspector, with no Compose dependency. SwiftUI and UIKit apps can use Kotlinspect without Compose. `kotlinspect` now adds the Compose UI on top of it; existing users change nothing.
+- Place the bubble yourself: `KotlinspectOverlay(sessionId)` in Compose, `KotlinspectUIKit.shared.makeOverlayView(sessionId:)` in UIKit, and the `KotlinspectSwiftUI` Swift package for SwiftUI. A placed overlay hides the automatic bubble while shown; with a session id it counts, toasts and opens only that session.
+- `bubble { automatic = false }` to show only placed overlays.
+- `Kotlinspect.openInspector(sessionId)` opens on a given session.
+- Depends on the oldest compatible versions instead of the newest: Kotlin 2.1.20, Ktor 3.0, Compose 1.7, coroutines 1.9, serialization 1.6.3, Room 2.7, compileSdk 34. Navigation 3 and kotlinx-datetime are no longer dependencies.
+- Fixed a crash on Ktor 3.0 for URLs with a "/" path, and an inspector failure can no longer fail the app's request.
+
 ## 1.0.0-beta04
 
 - iOS: the inspector opens as a standard sheet (swipe down to close). Fixes the inspector appearing and then vanishing until the app was sent to the background.

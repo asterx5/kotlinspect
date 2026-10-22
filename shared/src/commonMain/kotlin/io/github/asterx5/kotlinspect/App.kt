@@ -1,6 +1,7 @@
 package io.github.asterx5.kotlinspect
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -12,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryTabRow
@@ -69,8 +71,12 @@ fun App() {
         var status by remember { mutableStateOf("Tap a button to make a call") }
         var bubbleVisible by remember { mutableStateOf(true) }
         var screen by remember { mutableStateOf(0) }
+        // 0 = automatic bubble, 1 = KotlinspectOverlay in this layout, 2 = the same scoped to one session
+        var overlayMode by remember { mutableStateOf(0) }
+        var scopedSession by remember { mutableStateOf<String?>(null) }
         val onStatus: (String) -> Unit = { status = it }
 
+        Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -158,6 +164,26 @@ fun App() {
                     Kotlinspect.setBubbleVisible(bubbleVisible)
                 }) { Text(if (bubbleVisible) "Hide bubble" else "Show bubble") }
             }
+
+            Section("Overlay") {
+                FilterChip(selected = overlayMode == 0, onClick = { overlayMode = 0 }, label = { Text("Automatic") })
+                FilterChip(selected = overlayMode == 1, onClick = { overlayMode = 1 }, label = { Text("In layout") })
+                FilterChip(
+                    selected = overlayMode == 2,
+                    onClick = {
+                        if (scopedSession == null) scopedSession = Kotlinspect.startSession(name = "Scoped overlay demo")
+                        overlayMode = 2
+                    },
+                    label = { Text("In layout, one session") },
+                )
+            }
+        }
+
+        // Placing the overlay in the layout hides the automatic one while it is shown.
+        when (overlayMode) {
+            1 -> KotlinspectOverlay()
+            2 -> KotlinspectOverlay(sessionId = scopedSession)
+        }
         }
     }
 }
