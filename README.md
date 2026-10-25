@@ -324,7 +324,7 @@ If your app uses newer versions, Gradle keeps yours.
 
 | | Minimum |
 |---|---|
-| Kotlin | 2.1.20 |
+| Kotlin | 2.1.20 on Android and desktop; **2.4.0 on iOS** (see below) |
 | Ktor client | 3.0.0 |
 | Compose Multiplatform / Jetpack Compose | 1.7.0 |
 | kotlinx-coroutines | 1.9.0 |
@@ -332,6 +332,11 @@ If your app uses newer versions, Gradle keeps yours.
 | Room / SQLite (bundled) | 2.7.0 / 2.5.0 |
 | Android | minSdk 24, compileSdk 34, AndroidX Activity 1.8.2 |
 | iOS | Native inspector on iOS 14+, Compose inspector below |
+
+**iOS and Kotlin 2.4:** the iOS libraries are built with the Kotlin 2.4 compiler, and Kotlin/Native
+only reads libraries built by the same or an older compiler line. An iOS app therefore needs
+Kotlin 2.4 or newer; Android and desktop apps keep the 2.1.20 floor. Building the iOS libraries so
+older Kotlin can read them is planned.
 
 ## Configuration
 

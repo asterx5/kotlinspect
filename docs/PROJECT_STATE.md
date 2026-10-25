@@ -468,6 +468,8 @@ verified on the GitHub-login Central account.
 - An iOS app on Kotlin 2.1.x consuming the klibs (Android/JVM floors are verified).
 
 **Limitations:**
+- iOS apps need Kotlin 2.4+: the iOS klibs are built by Kotlin 2.4.20 (`abi_version=2.4.0`), which
+  older Kotlin/Native compilers cannot read. The 2.1.20 floor applies to Android and desktop.
 - Ktor only. Retrofit/OkHttp-only Android apps capture nothing yet.
 - Swift needs the app framework to `export` `kotlinspect-core` (and `kotlog` to call `Kotlog`).
 - Native iOS log filter menus close after each pick (keeping them open needs iOS 16).
@@ -513,7 +515,9 @@ verified on the GitHub-login Central account.
 Suggested order:
 
 1. **Verify on iPhone** what the owner's Compose app does not exercise: a SwiftUI/UIKit app on `kotlinspect-core`, the Swift package, `Kotlog` from Swift, and a pass through the native screens.
-2. **CI workflow:** run `jvmTest` and `checkKotlinAbi` on pushes; automate the two binary-compatibility
+2. **iOS for older Kotlin:** build the iOS klibs with a toolchain older Kotlin/Native can read
+   (for example a separate build on KGP 2.2), so the 2.1.20 floor also holds on iOS.
+3. **CI workflow:** run `jvmTest` and `checkKotlinAbi` on pushes; automate the two binary-compatibility
    scans (iOS klib against current Compose klibs, desktop jar against the current Compose classpath);
    link and smoke-run the iOS sample on a macOS runner, which would have caught beta08–beta10.
 3. **Android-only reach:**

@@ -146,3 +146,25 @@ version `1.0.0-SNAPSHOT` so local publishing never overwrites a released version
   as HAR 1.2 with bodies and the Authorization header still redacted. **Not verified:** the desktop
   save dialog, the iOS share sheet (needs a Mac), and opening a file in Chrome DevTools (the owner's
   manual check).
+
+### Phase 3: web targets (skipped for this release)
+
+- **Done and kept:** the structural move (commit "Move the Room database into persistentMain").
+  The Room database class, its constructor and migration spec, and the per-platform builders
+  (`PlatformStorage`) live in `persistentMain` (Android, JVM, iOS); the runtime depends on the
+  `KotlinspectStore` interface. **Deviation:** DAOs and entities stayed in `commonMain`, because
+  they only use Room's annotations and `room-common` 2.7.0 publishes `js` and `wasmJs` variants;
+  so the Compose UI and core keep sharing one record model. Maven Local diff: empty.
+- **Blocked:** adding `js`/`wasmJs` failed with "The Kotlin/JS standard library has the ABI
+  version (1.201.0) that is not compatible with the compiler's current ABI compatibility level
+  (2.4)". The library builds with Kotlin 2.4.20 but pins the 2.1.20 standard library
+  (`coreLibrariesVersion`); JS and Wasm only accept the compiler's own standard library, so web
+  support would mean apps targeting web need Kotlin 2.4 or newer. Per the spec's floor rule this
+  was reported, and the owner chose to **skip web for now**. The web work (targets, no-op Platform,
+  console notice, `ioDispatcher`, web actuals for every module) is parked on branch `vnext-web`.
+- **Found while investigating:** the published iOS klibs (beta12 included) have
+  `abi_version=2.4.0` and `compiler_version=2.4.20` in their manifest. Kotlin/Native compilers before
+  2.4 refuse klibs with a newer ABI version, so iOS apps already need Kotlin 2.4+; the "2.1.20"
+  floor holds for Android and desktop only. Owner decision: document it now (README, changelog,
+  project state) and fix later, by building the iOS klibs with an older toolchain. `-Xklib-abi-version`
+  alone is reported not to work (it changes the manifest but linking fails on older compilers).
