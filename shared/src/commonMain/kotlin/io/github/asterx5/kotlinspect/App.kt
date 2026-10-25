@@ -29,7 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import io.github.asterx5.kotlog.KtLog
+import io.github.asterx5.kotlog.Kotlog
 import io.github.asterx5.kotlog.LogLayer
 import io.github.asterx5.kotlog.LogLevel
 import io.ktor.client.HttpClient
@@ -59,14 +59,14 @@ private const val TAG = "Sample"
 /** Runs [block] and reports failures in the status line instead of crashing. */
 private fun CoroutineScope.call(onStatus: (String) -> Unit, label: String, block: suspend () -> Unit) = launch {
     onStatus("$label…")
-    KtLog.d(TAG, "Starting $label", LogLayer.Datasource.value)
+    Kotlog.d(TAG, "Starting $label", LogLayer.Datasource.value)
     try {
         block()
         onStatus("$label done")
-        KtLog.i(TAG, "$label done", LogLayer.Repository.value)
+        Kotlog.i(TAG, "$label done", LogLayer.Repository.value)
     } catch (e: Throwable) {
         onStatus("$label: ${e::class.simpleName}")
-        KtLog.e(TAG, "$label failed: ${e.message}", LogLayer.Repository.value, e)
+        Kotlog.e(TAG, "$label failed: ${e.message}", LogLayer.Repository.value, e)
     }
 }
 
@@ -146,16 +146,16 @@ fun App() {
 
             Section("Logs") {
                 OutlinedButton(onClick = {
-                    KtLog.v("Feed", "Rendering 20 rows", LogLayer.UI.value)
-                    KtLog.d("Feed", "Loaded page 1 from cache", LogLayer.Datasource.value)
-                    KtLog.i("Auth", "Signed in as demo", LogLayer.Repository.value)
-                    KtLog.w("Cart", "Coupon expired, ignoring it", LogLayer.Usecase.value)
-                    KtLog.e("Checkout", "Payment declined", LogLayer.ViewModel.value, IllegalStateException("card_declined"))
-                    KtLog.wtf("Checkout", "Order total is negative")
+                    Kotlog.v("Feed", "Rendering 20 rows", LogLayer.UI.value)
+                    Kotlog.d("Feed", "Loaded page 1 from cache", LogLayer.Datasource.value)
+                    Kotlog.i("Auth", "Signed in as demo", LogLayer.Repository.value)
+                    Kotlog.w("Cart", "Coupon expired, ignoring it", LogLayer.Usecase.value)
+                    Kotlog.e("Checkout", "Payment declined", LogLayer.ViewModel.value, IllegalStateException("card_declined"))
+                    Kotlog.wtf("Checkout", "Order total is negative")
                     status = "Logged one entry per level"
                 }) { Text("One of each level") }
                 OutlinedButton(onClick = {
-                    repeat(10) { i -> KtLog.log(LogLevel.Debug, "Sync", "Synced item ${i + 1} of 10", "worker") }
+                    repeat(10) { i -> Kotlog.log(LogLevel.Debug, "Sync", "Synced item ${i + 1} of 10", "worker") }
                     status = "Logged 10 entries with a custom layer"
                 }) { Text("Burst ×10") }
             }

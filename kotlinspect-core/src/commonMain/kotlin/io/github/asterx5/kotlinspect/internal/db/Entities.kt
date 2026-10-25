@@ -113,7 +113,7 @@ public data class SessionCount(
     @ColumnInfo(name = "calls") public val calls: Int,
 )
 
-/** One KtLog entry, stored in the session that was current when it was logged. */
+/** One Kotlog entry, stored in the session that was current when it was logged. */
 @io.github.asterx5.kotlinspect.InternalKotlinspectApi
 @Entity(tableName = "logs", indices = [Index("sessionId"), Index("timestamp")])
 public data class LogEntity(

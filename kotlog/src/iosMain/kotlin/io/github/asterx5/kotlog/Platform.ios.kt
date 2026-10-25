@@ -5,7 +5,7 @@ import platform.Foundation.NSLog
 import platform.Foundation.timeIntervalSince1970
 
 // Kotlin/Native has no ServiceLoader; Kotlinspect registers its sink at startup instead.
-internal actual fun discoverSinks(): List<KtLogSink> = emptyList()
+internal actual fun discoverSinks(): List<KotlogSink> = emptyList()
 
 internal actual fun currentTimeMillis(): Long = (NSDate().timeIntervalSince1970 * 1000).toLong()
 

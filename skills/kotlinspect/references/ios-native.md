@@ -15,7 +15,7 @@ kotlin {
         target.binaries.framework {
             baseName = "Shared"   // keep the project's existing name
             export("io.github.asterx5:kotlinspect-core:<version>")
-            export("io.github.asterx5:kotlog:<version>")   // KtLog from Swift
+            export("io.github.asterx5:kotlog:<version>")   // Kotlog from Swift
         }
     }
     sourceSets {
@@ -88,9 +88,9 @@ With `kotlog` exported, Swift can log into the same inspector. Kotlin default ar
 visible from Swift, so pass every argument (`nil` where unused):
 
 ```swift
-KtLog.shared.d(tag: "Feed", message: "Loaded \(items.count) items", layer: LogLayer.datasource.value)
-KtLog.shared.e(tag: "Feed", message: "Failed: \(error)", layer: "repository", throwable: nil)
-KtLog.shared.log(level: .warn, tag: "Feed", message: "Retrying", layer: nil, throwable: nil)
+Kotlog.shared.d(tag: "Feed", message: "Loaded \(items.count) items", layer: LogLayer.datasource.value)
+Kotlog.shared.e(tag: "Feed", message: "Failed: \(error)", layer: "repository", throwable: nil)
+Kotlog.shared.log(level: .warn, tag: "Feed", message: "Retrying", layer: nil, throwable: nil)
 ```
 
 Entries print with `NSLog` and appear in the native inspector's Logs tab (search plus Level, Tags

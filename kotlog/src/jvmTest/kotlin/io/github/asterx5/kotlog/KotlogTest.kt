@@ -8,16 +8,16 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class KtLogTest {
-    private val received = mutableListOf<KtLogEntry>()
+class KotlogTest {
+    private val received = mutableListOf<KotlogEntry>()
 
     init {
-        KtLogSinks.register { received += it }
+        KotlogSinks.register { received += it }
     }
 
     @Test
     fun entriesReachSinksWithAllFields() {
-        KtLog.d("Repo", "Loaded 3 items", LogLayer.Repository.value)
+        Kotlog.d("Repo", "Loaded 3 items", LogLayer.Repository.value)
         val entry = received.last()
         assertEquals(LogLevel.Debug, entry.level)
         assertEquals("Repo", entry.tag)
@@ -29,22 +29,22 @@ class KtLogTest {
 
     @Test
     fun anyStringWorksAsLayerAndLayerIsOptional() {
-        KtLog.i("Sync", "custom", "background-sync")
+        Kotlog.i("Sync", "custom", "background-sync")
         assertEquals("background-sync", received.last().layer)
-        KtLog.v("Sync", "no layer")
+        Kotlog.v("Sync", "no layer")
         assertNull(received.last().layer)
     }
 
     @Test
     fun throwableIsKeptAsStackTrace() {
-        KtLog.e("Api", "Failed", "datasource", IllegalStateException("boom"))
+        Kotlog.e("Api", "Failed", "datasource", IllegalStateException("boom"))
         val trace = assertNotNull(received.last().throwable)
         assertTrue(trace.contains("IllegalStateException: boom"))
     }
 
     @Test
     fun genericLogTakesTheLevel() {
-        LogLevel.entries.forEach { KtLog.log(it, "T", it.name) }
+        LogLevel.entries.forEach { Kotlog.log(it, "T", it.name) }
         assertEquals(LogLevel.entries, received.takeLast(LogLevel.entries.size).map { it.level })
     }
 
@@ -54,11 +54,11 @@ class KtLogTest {
         val original = System.out
         System.setOut(PrintStream(out, true))
         try {
-            KtLog.d("Ui", "Shown", "ui")
-            KtLog.consoleEnabled = false
-            KtLog.d("Ui", "Hidden", "ui")
+            Kotlog.d("Ui", "Shown", "ui")
+            Kotlog.consoleEnabled = false
+            Kotlog.d("Ui", "Hidden", "ui")
         } finally {
-            KtLog.consoleEnabled = true
+            Kotlog.consoleEnabled = true
             System.setOut(original)
         }
         val printed = out.toString()
@@ -69,8 +69,8 @@ class KtLogTest {
 
     @Test
     fun aFailingSinkNeverReachesTheCaller() {
-        KtLogSinks.register { error("sink failure") }
-        KtLog.w("Safe", "still fine")
+        KotlogSinks.register { error("sink failure") }
+        Kotlog.w("Safe", "still fine")
         assertEquals("still fine", received.last().message)
     }
 }

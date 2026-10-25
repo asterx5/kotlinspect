@@ -349,7 +349,7 @@ internal class NativeInspector(
             val problems = allLogs.count { it.level == "Warn" || it.level == "Error" || it.level == "Assert" }
             logStats.text = "${allLogs.size} logs  ·  $problems warnings or errors" +
                 if (shownLogs.size != allLogs.size) "  ·  ${shownLogs.size} shown" else ""
-            empty.text = if (allLogs.isEmpty()) "No logs yet\nEntries logged with KtLog appear here." else "Nothing matches"
+            empty.text = if (allLogs.isEmpty()) "No logs yet\nEntries logged with Kotlog appear here." else "Nothing matches"
             empty.hidden = shownLogs.isNotEmpty()
         }
 

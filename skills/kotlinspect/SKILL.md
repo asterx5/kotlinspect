@@ -1,6 +1,6 @@
 ---
 name: kotlinspect
-description: Add the Kotlinspect network inspector (io.github.asterx5:kotlinspect) to a Kotlin Multiplatform, Android, iOS or desktop project that uses the Ktor HTTP client, so every request shows up in an in-app bubble, toasts and an inspector screen in debug builds, and to add KtLog (Kotlog) logging that shows in the same inspector. Use this whenever the user wants to inspect, debug, log or see network calls / HTTP traffic / API requests in a KMP or Ktor app, wants logging with tags/layers/levels in a KMP app (KtLog, Kotlog), mentions Kotlinspect, Chucker-like or Pulse-like tools for KMP, a network bubble or overlay, or asks to "see what my app is calling", even if they don't name the library.
+description: Add the Kotlinspect network inspector (io.github.asterx5:kotlinspect) to a Kotlin Multiplatform, Android, iOS or desktop project that uses the Ktor HTTP client, so every request shows up in an in-app bubble, toasts and an inspector screen in debug builds, and to add Kotlog (Kotlog) logging that shows in the same inspector. Use this whenever the user wants to inspect, debug, log or see network calls / HTTP traffic / API requests in a KMP or Ktor app, wants logging with tags/layers/levels in a KMP app (Kotlog, Kotlog), mentions Kotlinspect, Chucker-like or Pulse-like tools for KMP, a network bubble or overlay, or asks to "see what my app is calling", even if they don't name the library.
 ---
 
 # Adding Kotlinspect
@@ -126,7 +126,7 @@ Box(Modifier.fillMaxSize()) {
 For a SwiftUI or UIKit iOS app, read `references/ios-native.md`: it needs a framework `export`
 line and then either the `KotlinspectSwiftUI` Swift package or a small wrapper.
 
-## 7. Logging with KtLog (optional)
+## 7. Logging with Kotlog (optional)
 
 Kotlinspect includes **Kotlog**, a small logging API. Entries print the platform way (Logcat,
 NSLog, console) and appear in the inspector's Logs tab, filterable by tag, layer and level, in
@@ -135,13 +135,13 @@ to network calls, or asks for logging in a KMP project; don't replace an existin
 they ask.
 
 ```kotlin
-import io.github.asterx5.kotlog.KtLog
+import io.github.asterx5.kotlog.Kotlog
 import io.github.asterx5.kotlog.LogLayer
 import io.github.asterx5.kotlog.LogLevel
 
-KtLog.d(TAG, "Loaded ${items.size} items", LogLayer.Datasource.value)
-KtLog.e(TAG, "Request failed", LogLayer.Repository.value, throwable)
-KtLog.log(LogLevel.Info, TAG, "Signed in", "usecase")
+Kotlog.d(TAG, "Loaded ${items.size} items", LogLayer.Datasource.value)
+Kotlog.e(TAG, "Request failed", LogLayer.Repository.value, throwable)
+Kotlog.log(LogLevel.Info, TAG, "Signed in", "usecase")
 ```
 
 - Levels: `v`, `d`, `i`, `w`, `e`, `wtf` (or `log(LogLevel, ...)`). `w`, `e`, `wtf` take an optional `Throwable`.
@@ -149,16 +149,16 @@ KtLog.log(LogLevel.Info, TAG, "Signed in", "usecase")
 - Modules that only log (data, domain) can depend on `io.github.asterx5:kotlog` alone; it has
   no dependencies. Modules with `kotlinspect` or `kotlinspect-core` already have it.
 - Options: `Kotlinspect.configure { logs { maxCount = 5_000 }; bubble { showLogCount = false } }`,
-  `KtLog.consoleEnabled = false`.
+  `Kotlog.consoleEnabled = false`.
 - From Swift: export `io.github.asterx5:kotlog` in the framework (see `references/ios-native.md`),
-  then `KtLog.shared.d(tag: "Feed", message: "Loaded", layer: LogLayer.datasource.value)`.
+  then `Kotlog.shared.d(tag: "Feed", message: "Loaded", layer: LogLayer.datasource.value)`.
 
 ## 8. Verify
 
 - Run a Gradle sync and build the module (for example `./gradlew :shared:compileKotlinMetadata`
   or the Android `assembleDebug`). Fix imports if the build reports unresolved Kotlinspect symbols.
 - Tell the user to run a **debug** build and make one request: the bubble count should go up and
-  a toast should appear. Tapping the bubble opens the inspector. KtLog entries show in its Logs tab
+  a toast should appear. Tapping the bubble opens the inspector. Kotlog entries show in its Logs tab
   and as a small count on the bubble.
 - If nothing appears: confirm the request goes through the client the plugin is installed in,
   that it is a debug build, and (iOS without Compose) that the framework exports kotlinspect-core.

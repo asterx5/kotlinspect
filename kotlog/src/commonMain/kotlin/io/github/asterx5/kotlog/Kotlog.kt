@@ -29,16 +29,16 @@ public enum class LogLayer(public val value: String) {
 /**
  * Logs with a tag, level, message and optional layer. Every entry is printed the platform way
  * (Android Log, NSLog on iOS, the console on desktop) and, when Kotlinspect is in the app,
- * also shown in its inspector. Only what goes through KtLog is captured, not the rest of the console.
+ * also shown in its inspector. Only what goes through Kotlog is captured, not the rest of the console.
  *
  * ```
- * KtLog.d(TAG, "Loaded ${items.size} items", LogLayer.Datasource.value)
- * KtLog.e(TAG, "Request failed", "repository", error)
+ * Kotlog.d(TAG, "Loaded ${items.size} items", LogLayer.Datasource.value)
+ * Kotlog.e(TAG, "Request failed", "repository", error)
  * ```
  *
- * From Swift: `KtLog.shared.d(tag: tag, message: "Loaded", layer: "datasource")`.
+ * From Swift: `Kotlog.shared.d(tag: tag, message: "Loaded", layer: "datasource")`.
  */
-public object KtLog {
+public object Kotlog {
     /** Prints entries to the platform log. Turn off to only send them to Kotlinspect. */
     @Volatile
     public var consoleEnabled: Boolean = true
@@ -73,9 +73,9 @@ public object KtLog {
         if (consoleEnabled) {
             runCatching { printToPlatform(level, tag, message, layer, throwable) }
         }
-        val sinks = KtLogSinks.all
+        val sinks = KotlogSinks.all
         if (sinks.isEmpty()) return
-        val entry = KtLogEntry(
+        val entry = KotlogEntry(
             timestampMillis = currentTimeMillis(),
             level = level,
             tag = tag,
@@ -90,7 +90,7 @@ public object KtLog {
 
 /** One log entry as handed to sinks. */
 @InternalKotlogApi
-public class KtLogEntry(
+public class KotlogEntry(
     public val timestampMillis: Long,
     public val level: LogLevel,
     public val tag: String,
@@ -102,8 +102,8 @@ public class KtLogEntry(
 
 /** Receives every entry. Kotlinspect provides one to show logs in its inspector. */
 @InternalKotlogApi
-public fun interface KtLogSink {
-    public fun record(entry: KtLogEntry)
+public fun interface KotlogSink {
+    public fun record(entry: KotlogEntry)
 }
 
 /**
@@ -112,25 +112,25 @@ public fun interface KtLogSink {
  */
 @InternalKotlogApi
 @OptIn(ExperimentalAtomicApi::class)
-public object KtLogSinks {
-    private val registered = AtomicReference<List<KtLogSink>>(emptyList())
-    private val discovered: List<KtLogSink> by lazy { runCatching { discoverSinks() }.getOrDefault(emptyList()) }
+public object KotlogSinks {
+    private val registered = AtomicReference<List<KotlogSink>>(emptyList())
+    private val discovered: List<KotlogSink> by lazy { runCatching { discoverSinks() }.getOrDefault(emptyList()) }
 
-    public fun register(sink: KtLogSink) {
+    public fun register(sink: KotlogSink) {
         while (true) {
             val current = registered.load()
             if (registered.compareAndSet(current, current + sink)) return
         }
     }
 
-    internal val all: List<KtLogSink>
+    internal val all: List<KotlogSink>
         get() {
             val extra = registered.load()
             return if (extra.isEmpty()) discovered else discovered + extra
         }
 }
 
-internal expect fun discoverSinks(): List<KtLogSink>
+internal expect fun discoverSinks(): List<KotlogSink>
 
 internal expect fun currentTimeMillis(): Long
 

@@ -10,7 +10,7 @@ import io.github.asterx5.kotlinspect.internal.capture.Redaction
 import io.github.asterx5.kotlinspect.internal.db.KeyValueEntity
 import io.github.asterx5.kotlinspect.internal.db.KotlinspectDatabase
 import io.github.asterx5.kotlinspect.internal.db.LogEntity
-import io.github.asterx5.kotlog.KtLogEntry
+import io.github.asterx5.kotlog.KotlogEntry
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
 import io.github.asterx5.kotlinspect.internal.db.SessionEntity
 import io.ktor.util.date.getTimeMillis
@@ -152,10 +152,10 @@ internal class KotlinspectRuntime(
 
     // region Logs
 
-    private val logQueue = Channel<KtLogEntry>(Channel.UNLIMITED)
+    private val logQueue = Channel<KotlogEntry>(Channel.UNLIMITED)
 
-    /** Queues a KtLog entry. Never blocks the caller; entries are written in batches. */
-    fun log(entry: KtLogEntry) {
+    /** Queues a Kotlog entry. Never blocks the caller; entries are written in batches. */
+    fun log(entry: KotlogEntry) {
         val c = config
         if (c.enabled && c.logsEnabled) logQueue.trySend(entry)
     }
@@ -177,7 +177,7 @@ internal class KotlinspectRuntime(
         }
     }
 
-    private fun KtLogEntry.toEntity(sessionId: String) = LogEntity(
+    private fun KotlogEntry.toEntity(sessionId: String) = LogEntity(
         sessionId = sessionId,
         timestamp = timestampMillis,
         level = level.name,

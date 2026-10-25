@@ -13,7 +13,7 @@ HTTP client, on **Android, iOS and desktop (JVM)**. An app adds one dependency a
 (`install(KotlinspectPlugin)`); every HTTP call then appears in a draggable **bubble**, a
 **toast** per call, and a full **inspector** (search, filters, headers, pretty JSON, copy as cURL).
 It is **off in release builds** by default, so it is safe to ship in production code.
-It also ships **Kotlog** (`KtLog.d(TAG, "msg", "datasource")`), a tiny logger whose entries print
+It also ships **Kotlog** (`Kotlog.d(TAG, "msg", "datasource")`), a tiny logger whose entries print
 the platform way and appear in the inspector's **Logs** tab.
 
 - **Repo:** https://github.com/asterx5/kotlinspect (public, Apache 2.0)
@@ -37,7 +37,7 @@ the app uses Compose, with zero setup and zero risk in release builds.
 | Native iOS inspector (UIKit) | Done. Used in the owner's CMP app on iPhone (beta09–12, run from a friend's Mac); not checked feature by feature |
 | Native iOS automatic overlay window (bubble, toast) | Done. Ran on iPhone; beta10 fixed the app taking no taps |
 | Placeable overlays + session scoping | Done, verified on Android |
-| Kotlog (`KtLog`) + Logs tab + bubble log count, Compose | Done, tested, verified on Android emulator (beta07) |
+| Kotlog + Logs tab + bubble log count, Compose | Done, tested, verified on Android emulator (beta07) |
 | Logs tab + bubble log count, native iOS (UIKit) | Done (beta07). In the owner's iPhone app since beta09; not checked feature by feature |
 | `KotlinspectSwiftUI` Swift package | Done, **never compiled** (no Mac available) |
 | Minimum-version dependency floors | Done, verified with an old-toolchain Android app |
@@ -58,9 +58,9 @@ the app uses Compose, with zero setup and zero risk in release builds.
 | beta03 | Custom design (no Material 3), big speed fix, first native UIKit inspector | yes |
 | beta04 | iOS inspector as a sheet (fixed "opens then vanishes"), method filter row | yes |
 | beta05 | Split into `kotlinspect-core` + `kotlinspect`, native iOS bubble/toast, placeable overlays with session scoping, Swift package, oldest-compatible dependency floors | yes |
-| beta06 | Kotlog (`KtLog`, new `kotlog` artifact), Compose Logs tab with tag/layer/level filters, bubble log count, database v2 migration | yes |
-| beta07 | Native iOS Logs tab and bubble log count (parity with Compose), sample KtLog demo, Kotlog docs and skill | yes |
-| beta08 | iOS crash on the first `KtLog` call (`NSLog` vararg) | **no** (dropped; folded into beta09) |
+| beta06 | Kotlog (logger, new `kotlog` artifact), Compose Logs tab with tag/layer/level filters, bubble log count, database v2 migration | yes |
+| beta07 | Native iOS Logs tab and bubble log count (parity with Compose), sample Kotlog demo, Kotlog docs and skill | yes |
+| beta08 | iOS crash on the first `Kotlog` call (`NSLog` vararg) | **no** (dropped; folded into beta09) |
 | beta09 | `IrLinkageError` on Compose iOS with newer Compose (`$stable` fields); includes the beta08 fix | yes |
 | beta10 | iPhone apps took no taps (overlay window); no automatic window with `automatic = false` | yes |
 | beta11 | Desktop `NoSuchMethodError` on newer Compose (`safeDrawing`); bubble anchored to an edge from the first frame; RTL mirroring; Compose log filters as dropdowns | yes |
@@ -106,7 +106,7 @@ These shaped almost every decision. Keep them when extending the library.
 kotlinspect/                        repo root
 ├── kotlinspect-core/               core artifact: capture, storage, sessions, API, native iOS UI
 ├── kotlinspect/                    Compose artifact: Compose UI on top of core
-├── kotlog/                         KtLog logging API, no dependencies
+├── kotlog/                         Kotlog logging API, no dependencies
 ├── shared/ androidApp/ desktopApp/ iosApp/   sample app (Compose Multiplatform)
 ├── Package.swift  swift/           optional KotlinspectSwiftUI Swift package
 ├── skills/kotlinspect/             AI agent skill (SKILL.md + references/)
@@ -146,8 +146,8 @@ kotlinspect/                        repo root
 - **`kotlinspect-core`** has no Compose dependency. SwiftUI/UIKit iOS apps use it alone.
 - **`kotlinspect`** depends on core (`api`), adds Compose UI. It is what most apps add.
 - **`kotlog`** (package `io.github.asterx5.kotlog`) has no dependencies. Core depends on it (`api`)
-  and registers a `KtLogSink` (ServiceLoader on Android/JVM, `@EagerInitialization` on iOS), so
-  `KtLog` entries reach the database with no setup.
+  and registers a `KotlogSink` (ServiceLoader on Android/JVM, `@EagerInitialization` on iOS), so
+  `Kotlog` entries reach the database with no setup.
 - Both share package `io.github.asterx5.kotlinspect`; internals under `...kotlinspect.internal`.
 
 ### 6.2 Capture pipeline (`KotlinspectPlugin`, `HttpCapture`)
@@ -268,9 +268,9 @@ jpackage app" (override with `-Dkotlinspect.debug=true|false`).
 
 ### 6.9 Logging (Kotlog)
 
-- `KtLog.v/d/i/w/e/wtf(tag, message, layer?, throwable?)` and `log(LogLevel, ...)`. Prints via
+- `Kotlog.v/d/i/w/e/wtf(tag, message, layer?, throwable?)` and `log(LogLevel, ...)`. Prints via
   `android.util.Log`, `NSLog`, or stdout/stderr (`consoleEnabled` turns this off), then hands a
-  `KtLogEntry` to registered sinks. Sink failures are swallowed.
+  `KotlogEntry` to registered sinks. Sink failures are swallowed.
 - Core's sink forwards to the runtime, which batches entries (50 ms, up to 500) into the `logs`
   table of the **current** session, caps messages at 32,000 chars and trims past `logs.maxCount`
   (5,000). Release builds: printing only, nothing stored.
@@ -313,8 +313,8 @@ Kotlinspect.callCount / inFlightCount / errorCount / logCount / latestCall / cal
 Kotlinspect.openInspector(sessionId); setBubbleVisible(...); isEnabled
 
 // Logging (kotlog)
-KtLog.v/d/i(tag, message, layer?); KtLog.w/e/wtf(tag, message, layer?, throwable?)
-KtLog.log(LogLevel, tag, message, layer?, throwable?); KtLog.consoleEnabled; LogLayer.X.value
+Kotlog.v/d/i(tag, message, layer?); Kotlog.w/e/wtf(tag, message, layer?, throwable?)
+Kotlog.log(LogLevel, tag, message, layer?, throwable?); Kotlog.consoleEnabled; LogLayer.X.value
 
 // UI
 KotlinspectOverlay(modifier, sessionId)                    // Compose
@@ -364,9 +364,9 @@ The Compose module has no automated tests.
 | DisabledStateTest | release gating, `allowInRelease`, master switch, **no database file created**, safe no-op API |
 | OverlayModelTest | session-scoped counts and toasts, embedded overlay hides automatic, `automatic = false` |
 | PureLogicTest | endpoint keys, fingerprints, content types, buffers, retention codec, JSON, cURL, toasts, filters |
-| LogTest | log storage order, KtLog end to end, clear/delete with the session, trimming, disabled, bubble counts |
+| LogTest | log storage order, Kotlog end to end, clear/delete with the session, trimming, disabled, bubble counts |
 | MigrationTest | a version-1 database (built from the exported schema) opens as version 2 with its data |
-| KtLogTest (kotlog) | levels, layers, console text, sinks, sink failures swallowed |
+| KotlogTest (kotlog) | levels, layers, console text, sinks, sink failures swallowed |
 
 **ABI:** `./gradlew checkKotlinAbi` for all three modules.
 
@@ -462,14 +462,14 @@ verified on the GitHub-login Central account.
   Multiplatform), including `KotlinspectUIKit.makeOverlayView`.
 - The native iOS screens checked feature by feature (Logs menus, log detail, copy actions); they
   run in the owner's app but nobody has gone through them systematically.
-- Calling `KtLog` from Swift (`KtLog.shared.d(tag:message:layer:)`) with `kotlog` exported.
+- Calling `Kotlog` from Swift (`Kotlog.shared.d(tag:message:layer:)`) with `kotlog` exported.
 - The `KotlinspectSwiftUI` package (never compiled). It relies on the selectors
   `shared`, `makeOverlayViewSessionId:`, `openInspectorSessionId:`.
 - An iOS app on Kotlin 2.1.x consuming the klibs (Android/JVM floors are verified).
 
 **Limitations:**
 - Ktor only. Retrofit/OkHttp-only Android apps capture nothing yet.
-- Swift needs the app framework to `export` `kotlinspect-core` (and `kotlog` to call `KtLog`).
+- Swift needs the app framework to `export` `kotlinspect-core` (and `kotlog` to call `Kotlog`).
 - Native iOS log filter menus close after each pick (keeping them open needs iOS 16).
 - Native iOS UI needs iOS 14.
 - No CI: tests, ABI checks and the binary-compatibility scans run only locally, by hand.
@@ -512,7 +512,7 @@ verified on the GitHub-login Central account.
 
 Suggested order:
 
-1. **Verify on iPhone** what the owner's Compose app does not exercise: a SwiftUI/UIKit app on `kotlinspect-core`, the Swift package, `KtLog` from Swift, and a pass through the native screens.
+1. **Verify on iPhone** what the owner's Compose app does not exercise: a SwiftUI/UIKit app on `kotlinspect-core`, the Swift package, `Kotlog` from Swift, and a pass through the native screens.
 2. **CI workflow:** run `jvmTest` and `checkKotlinAbi` on pushes; automate the two binary-compatibility
    scans (iOS klib against current Compose klibs, desktop jar against the current Compose classpath);
    link and smoke-run the iOS sample on a macOS runner, which would have caught beta08–beta10.

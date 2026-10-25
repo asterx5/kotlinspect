@@ -3,8 +3,8 @@ package io.github.asterx5.kotlog
 import android.util.Log
 import java.util.ServiceLoader
 
-internal actual fun discoverSinks(): List<KtLogSink> =
-    ServiceLoader.load(KtLogSink::class.java, KtLogSink::class.java.classLoader).toList()
+internal actual fun discoverSinks(): List<KotlogSink> =
+    ServiceLoader.load(KotlogSink::class.java, KotlogSink::class.java.classLoader).toList()
 
 internal actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 

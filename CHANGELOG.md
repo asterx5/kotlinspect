@@ -2,6 +2,23 @@
 
 All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 
+## Unreleased
+
+> **Breaking change in the release after 1.0.0-beta12: `KtLog` is now `Kotlog`.**
+> The logging API was renamed to match the Kotlog feature name. Functions and
+> parameters are unchanged, so a project-wide find-and-replace of `KtLog` with
+> `Kotlog` (including imports) is all that's needed:
+>
+> ```kotlin
+> // Before
+> import io.github.asterx5.kotlog.KtLog
+> KtLog.d("Auth", "Token refreshed")
+>
+> // After
+> import io.github.asterx5.kotlog.Kotlog
+> Kotlog.d("Auth", "Token refreshed")
+> ```
+
 ## 1.0.0-beta12
 
 - Fix: in right-to-left apps (Arabic, Hebrew), the Compose bubble was off screen on Android, iOS and desktop, since beta11. Beta11 placed it in absolute coordinates but still from the Box's start corner, which in a right-to-left layout is the top right, so the bubble sat a full width beyond the right edge. It is now anchored to the absolute top left as well, so it rests on the right edge and follows a drag in either layout direction. Left-to-right apps were not affected.

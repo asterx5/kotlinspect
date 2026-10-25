@@ -75,12 +75,12 @@ public class BubbleOptions internal constructor() {
      */
     public var automatic: Boolean = true
 
-    /** Shows the number of KtLog entries in a small badge under the call count. */
+    /** Shows the number of Kotlog entries in a small badge under the call count. */
     public var showLogCount: Boolean = true
 }
 
 public class LogOptions internal constructor() {
-    /** Stores KtLog entries for the inspector. KtLog still prints to the console when false. */
+    /** Stores Kotlog entries for the inspector. Kotlog still prints to the console when false. */
     public var enabled: Boolean = true
 
     /** Newest entries kept across all sessions; older ones are removed. */

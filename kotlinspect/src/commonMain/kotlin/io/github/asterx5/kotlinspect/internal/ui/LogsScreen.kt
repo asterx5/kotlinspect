@@ -57,7 +57,7 @@ import kotlinx.coroutines.flow.flowOf
 internal fun KsColors.levelColor(level: String): Color = Color(KsPalette.of(isDark).levelColor(level))
 
 /**
- * The Logs tab: KtLog entries for one session, with search and multi-select filters. Level, tag
+ * The Logs tab: Kotlog entries for one session, with search and multi-select filters. Level, tag
  * and layer each get a dropdown, like the native iOS inspector, listing only the values that
  * actually appear in the session, with their counts.
  */
@@ -263,7 +263,7 @@ private fun EmptyStateLogs(noLogs: Boolean) {
         KsText(if (noLogs) "No logs yet" else "Nothing matches", Ks.type.title)
         Spacer(Modifier.height(4.dp))
         KsText(
-            if (noLogs) "Entries logged with KtLog appear here, e.g. KtLog.d(TAG, \"message\", \"datasource\")." else "Try another filter or search.",
+            if (noLogs) "Entries logged with Kotlog appear here, e.g. Kotlog.d(TAG, \"message\", \"datasource\")." else "Try another filter or search.",
             Ks.type.caption,
         )
     }

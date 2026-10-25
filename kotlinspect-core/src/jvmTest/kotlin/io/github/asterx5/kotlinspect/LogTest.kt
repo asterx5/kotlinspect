@@ -3,8 +3,8 @@ package io.github.asterx5.kotlinspect
 import io.github.asterx5.kotlinspect.internal.KotlinspectHost
 import io.github.asterx5.kotlinspect.internal.KotlinspectRuntime
 import io.github.asterx5.kotlinspect.internal.db.LogEntity
-import io.github.asterx5.kotlog.KtLog
-import io.github.asterx5.kotlog.KtLogEntry
+import io.github.asterx5.kotlog.Kotlog
+import io.github.asterx5.kotlog.KotlogEntry
 import io.github.asterx5.kotlog.LogLayer
 import io.github.asterx5.kotlog.LogLevel
 import kotlinx.coroutines.Dispatchers
@@ -25,7 +25,7 @@ class LogTest {
     }
 
     private fun entry(message: String, level: LogLevel = LogLevel.Debug, tag: String = "Repo", layer: String? = "repository") =
-        KtLogEntry(System.currentTimeMillis(), level, tag, message, layer, null)
+        KotlogEntry(System.currentTimeMillis(), level, tag, message, layer, null)
 
     /** Waits in real time until [count] logs are stored in the current session. */
     private suspend fun KotlinspectRuntime.awaitLogs(count: Int): List<LogEntity> = withContext(Dispatchers.Default) {
@@ -60,11 +60,11 @@ class LogTest {
     fun ktLogReachesTheInspectorWithNoSetup() = runTest {
         val rt = testRuntime()
         Kotlinspect.installRuntime(rt)
-        KtLog.consoleEnabled = false
+        Kotlog.consoleEnabled = false
         try {
-            KtLog.d("Feed", "Loaded 3 items", LogLayer.Datasource.value)
+            Kotlog.d("Feed", "Loaded 3 items", LogLayer.Datasource.value)
         } finally {
-            KtLog.consoleEnabled = true
+            Kotlog.consoleEnabled = true
         }
 
         val log = rt.awaitLogs(1).single()
