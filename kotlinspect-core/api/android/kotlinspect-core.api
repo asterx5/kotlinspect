@@ -97,6 +97,32 @@ public final class io/github/asterx5/kotlinspect/CapturedTimings {
 public abstract interface annotation class io/github/asterx5/kotlinspect/ExperimentalKotlinspectApi : java/lang/annotation/Annotation {
 }
 
+public final class io/github/asterx5/kotlinspect/HarExportOptions {
+	public fun <init> ()V
+	public fun <init> (ZZZ)V
+	public synthetic fun <init> (ZZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getIncludeBodies ()Z
+	public final fun getIncludeFailed ()Z
+	public final fun getIncludePending ()Z
+}
+
+public abstract interface class io/github/asterx5/kotlinspect/HarExportResult {
+}
+
+public final class io/github/asterx5/kotlinspect/HarExportResult$Failure : io/github/asterx5/kotlinspect/HarExportResult {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun getReason ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/HarExportResult$Success : io/github/asterx5/kotlinspect/HarExportResult {
+	public fun <init> (Ljava/lang/String;IJ)V
+	public final fun getByteSize ()J
+	public final fun getEntryCount ()I
+	public final fun getFilePath ()Ljava/lang/String;
+	public fun toString ()Ljava/lang/String;
+}
+
 public abstract interface class io/github/asterx5/kotlinspect/HeaderRedactor {
 	public abstract fun redact (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 }
@@ -112,6 +138,10 @@ public final class io/github/asterx5/kotlinspect/Kotlinspect {
 	public final fun clearSession (Ljava/lang/String;)V
 	public final fun configure (Lkotlin/jvm/functions/Function1;)V
 	public final fun deleteSession (Ljava/lang/String;)V
+	public final fun exportHar (Ljava/lang/String;Lio/github/asterx5/kotlinspect/HarExportOptions;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun exportHar (Ljava/util/List;Lio/github/asterx5/kotlinspect/HarExportOptions;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun exportHar$default (Lio/github/asterx5/kotlinspect/Kotlinspect;Ljava/lang/String;Lio/github/asterx5/kotlinspect/HarExportOptions;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static synthetic fun exportHar$default (Lio/github/asterx5/kotlinspect/Kotlinspect;Ljava/util/List;Lio/github/asterx5/kotlinspect/HarExportOptions;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
 	public final fun getCallCount ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getCalls ()Lkotlinx/coroutines/flow/Flow;
 	public final fun getCurrentSession ()Lkotlinx/coroutines/flow/Flow;

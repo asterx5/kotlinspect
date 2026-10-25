@@ -55,6 +55,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import io.github.asterx5.kotlinspect.CallState
 import io.github.asterx5.kotlinspect.internal.Codecs
+import io.github.asterx5.kotlinspect.internal.HarTarget
 import io.github.asterx5.kotlinspect.internal.KotlinspectHost
 import io.github.asterx5.kotlinspect.internal.uimodel.KsPalette
 import io.github.asterx5.kotlinspect.internal.uimodel.StatusFilter
@@ -115,6 +116,7 @@ internal fun InspectorApp(host: KotlinspectHost, initialSessionId: String? = nul
         val listScroll = rememberLazyListState()
         val logScroll = rememberLazyListState()
         val copied = remember { mutableStateOf<String?>(null) }
+        val exportTarget = remember { mutableStateOf<HarTarget?>(null) }
         val goBack: () -> Unit = {
             if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) else onClose()
         }
@@ -136,33 +138,37 @@ internal fun InspectorApp(host: KotlinspectHost, initialSessionId: String? = nul
                         logScroll,
                         onOpen = { backStack.add(InspectorRoute.Detail(it)) },
                         onClose = onClose,
-                        onCopied = { copied.value = it },
+                        onCopied = { copied.value = "$it copied" },
+                        onExport = { exportTarget.value = HarTarget.Session(it) },
                     )
                     is InspectorRoute.Detail -> CallDetailScreen(
                         host,
                         route.recordId,
                         onBack = goBack,
-                        onCopied = { copied.value = it },
+                        onCopied = { copied.value = "$it copied" },
+                        onExport = { exportTarget.value = HarTarget.Call(it) },
                     )
                 }
             }
+            HarExportSheet(host, exportTarget.value, onDismiss = { exportTarget.value = null }, onNotice = { copied.value = it })
             CopiedPill(copied.value, Modifier.align(Alignment.BottomCenter)) { copied.value = null }
         }
     }
 }
 
+/** A short confirmation at the bottom, such as "cURL copied" or "HAR exported". */
 @Composable
-private fun CopiedPill(label: String?, modifier: Modifier, onDone: () -> Unit) {
-    LaunchedEffect(label) {
-        if (label != null) {
-            delay(1_400)
+private fun CopiedPill(message: String?, modifier: Modifier, onDone: () -> Unit) {
+    LaunchedEffect(message) {
+        if (message != null) {
+            delay(if (message.length > 24) 2_600 else 1_400)
             onDone()
         }
     }
-    AnimatedVisibility(label != null, modifier.padding(bottom = 24.dp), enter = fadeIn() + slideInVertically { it }, exit = fadeOut()) {
+    AnimatedVisibility(message != null, modifier.padding(bottom = 24.dp, start = 16.dp, end = 16.dp), enter = fadeIn() + slideInVertically { it }, exit = fadeOut()) {
         val c = Ks.colors
         Box(Modifier.clip(RoundedCornerShape(50)).background(c.text).padding(horizontal = 16.dp, vertical = 9.dp)) {
-            KsText("${label ?: ""} copied", Ks.type.bodyStrong, color = c.bg)
+            KsText(message.orEmpty(), Ks.type.bodyStrong, color = c.bg, maxLines = 2)
         }
     }
 }
@@ -178,6 +184,7 @@ private fun CallListScreen(
     onOpen: (String) -> Unit,
     onClose: () -> Unit,
     onCopied: (String) -> Unit,
+    onExport: (String) -> Unit,
 ) {
     val c = Ks.colors
     val sessions by remember { host.sessions() }.collectAsState(emptyList())
@@ -271,7 +278,7 @@ private fun CallListScreen(
             }
             }
         }
-        SessionPanel(host, state, sessions, sessionId, currentId)
+        SessionPanel(host, state, sessions, sessionId, currentId, onExport)
     }
 }
 
@@ -380,6 +387,7 @@ private fun SessionPanel(
     sessions: List<SessionEntity>,
     viewedId: String?,
     currentId: String?,
+    onExport: (String) -> Unit,
 ) {
     val c = Ks.colors
     AnimatedVisibility(state.sessionsOpen, enter = fadeIn(), exit = fadeOut()) {
@@ -450,6 +458,10 @@ private fun SessionPanel(
                     Chip("Record here", false) { host.switchSession(viewedId) }
                 }
                 if (viewedId != null) {
+                    Chip("Export as HAR", false, tint = c.accent) {
+                        state.sessionsOpen = false
+                        onExport(viewedId)
+                    }
                     Chip("Clear calls", false) { host.clearSession(viewedId) }
                     Chip("Delete", false) {
                         host.deleteSession(viewedId)
@@ -478,7 +490,13 @@ private enum class DetailTab(val label: String) { Overview("Overview"), Request(
 @OptIn(ExperimentalFoundationApi::class)
 @Suppress("DEPRECATION")
 @Composable
-private fun CallDetailScreen(host: KotlinspectHost, recordId: String, onBack: () -> Unit, onCopied: (String) -> Unit) {
+private fun CallDetailScreen(
+    host: KotlinspectHost,
+    recordId: String,
+    onBack: () -> Unit,
+    onCopied: (String) -> Unit,
+    onExport: (String) -> Unit,
+) {
     val c = Ks.colors
     val record by remember(recordId) { host.record(recordId) }.collectAsState(null)
     var tab by remember { mutableStateOf(DetailTab.Overview) }
@@ -492,7 +510,11 @@ private fun CallDetailScreen(host: KotlinspectHost, recordId: String, onBack: ()
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Action("‹ Calls", onClick = onBack)
             Spacer(Modifier.weight(1f))
-            record?.let { r -> Action("Copy cURL", emphasized = true) { copy("cURL", r.toCurl()) } }
+            record?.let { r ->
+                Action("Share as HAR") { onExport(r.id) }
+                Spacer(Modifier.width(4.dp))
+                Action("Copy cURL", emphasized = true) { copy("cURL", r.toCurl()) }
+            }
         }
         val r = record
         if (r == null) {

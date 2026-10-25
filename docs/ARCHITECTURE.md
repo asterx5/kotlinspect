@@ -101,3 +101,48 @@ version `1.0.0-SNAPSHOT` so local publishing never overwrites a released version
   through Retrofit 3.0 on an OkHttp client with the interceptor and the listener. Checked on the
   Android emulator: the calls appear with an OkHttp badge next to a Ktor call, and the detail
   shows Blocked/DNS/Connect/TLS/Send/Wait/Receive, protocol h2 and the server address.
+
+### Phase 2: HAR export
+
+- **API:** `HarExportOptions(includeBodies, includeFailed, includePending)`, `HarExportResult`
+  (`Success(filePath, entryCount, byteSize)` / `Failure(reason)`), `Kotlinspect.exportHar(sessionId)`
+  and `exportHar(recordIds)`, all `@ExperimentalKotlinspectApi`. `includeKotlinspectFields` is not
+  there, since the `_kotlinspect` idea was not kept; only Chrome's `_error` is written.
+- **Writer:** a small hand-rolled streaming JSON writer (`HarJson`), compact, UTF-8 without BOM;
+  quote, backslash and characters below U+0020 escaped (the latter as `\u00XX`). kotlinx
+  serialization is a core dependency, but its escaping writes `\n` style escapes, and the spec asks
+  for `\u00XX`, so it is not used for output. Session records are read with keyset paging
+  (`startedAt, id`), 200 at a time. `pages` is written after `entries` (JSON key order is free), so
+  each page's start time is known without a second pass.
+- **Mapping:** as spec 2.3. HTTP versions: `h2`/`HTTP/2.0` map to `HTTP/2.0`, `h3`/`quic` to
+  `HTTP/3.0`, unknown to `HTTP/1.1`. Cookies from `Cookie` headers (none when redacted), and
+  best-effort `Set-Cookie` parsing with `Expires` turned into ISO 8601. Status is 0 and statusText ""
+  for failed, cancelled and pending entries. `_error` is the error for failed calls, "cancelled"
+  or "interrupted" for cancelled ones.
+- **Timings:** as spec 2.4, shared by every entry (`HarEntries.timings`); a 2,000-case random test
+  checks `time` always equals the sum of the phases and that no phase is negative.
+- **Files:** `HarFiles` expect/actual: Android `cacheDir`, iOS `NSTemporaryDirectory()` (POSIX
+  `fopen`/`fwrite`), desktop `java.io.tmpdir`, each under `kotlinspect/exports`. `.har` files older
+  than 24 hours are deleted before every export. The library version for `creator` comes from a
+  generated `BuildInfo.VERSION`.
+- **Android delivery:** `KotlinspectFileProvider`, a small library-owned `ContentProvider` (owner
+  decision: no androidx.core). Authority `${applicationId}.kotlinspect.fileprovider`, not exported,
+  `grantUriPermissions`, read-only, and only files directly inside the export folder (canonical
+  path check). The share intent carries the URI as `EXTRA_STREAM` and `ClipData` with a read grant.
+  Checked on the emulator: the chooser shows the file name, which it reads through the provider.
+- **iOS delivery:** `UIActivityViewController` presented over the inspector, anchored for iPad.
+  **Deviation:** the UIKit sheet is an action sheet with *Include bodies* / *Without bodies*
+  buttons, since `UIAlertController` cannot hold a switch; the Compose sheet has the switch.
+- **Desktop delivery:** an AWT save dialog with the default file name; the export writes straight
+  to the chosen path.
+- **Progress:** exports with more than 200 entries show "Exporting n of total"; the result is
+  confirmed with a short message (Compose) or the share sheet itself (iOS).
+- **Tests:** `HarExportTest` (10): byte-identical golden file (`src/jvmTest/resources/har/golden.har`,
+  creator version normalized), every required HAR 1.2 field with the right type, timing invariant,
+  escaping (quotes, backslashes, control characters, emoji, RTL), options, redaction (no raw secret
+  anywhere in the file), 10,000 records read in 51 pages, 24-hour cleanup and file names, single-call
+  export, and failures for disabled and unknown sessions.
+- **Verified manually:** Android export from the inspector on the emulator; the pulled file parses
+  as HAR 1.2 with bodies and the Authorization header still redacted. **Not verified:** the desktop
+  save dialog, the iOS share sheet (needs a Mac), and opening a file in Chrome DevTools (the owner's
+  manual check).

@@ -132,6 +132,35 @@ val retrofit = Retrofit.Builder()
   as a Ktor call, with OkHttp's details (timings, server address) added to it.
 - In release builds the interceptor and the listener do nothing.
 
+## Export as HAR
+
+Any session, or a single call, can be exported as a standard **HAR 1.2** file that opens in Chrome
+DevTools (drop it on the Network panel), Charles, Proxyman and Insomnia.
+
+- **In the inspector:** the sessions panel has *Export as HAR*, and every call has *Share as HAR*.
+  A sheet first asks whether to include bodies. Android and iOS then open the share sheet;
+  desktop asks where to save the file.
+- **From code:**
+
+  ```kotlin
+  @OptIn(ExperimentalKotlinspectApi::class)
+  suspend fun share(sessionId: String) {
+      when (val result = Kotlinspect.exportHar(sessionId, HarExportOptions(includeBodies = true))) {
+          is HarExportResult.Success -> println("${result.entryCount} calls in ${result.filePath}")
+          is HarExportResult.Failure -> println(result.reason)
+      }
+  }
+  ```
+
+  `Kotlinspect.exportHar(listOf(callId))` exports chosen calls. Options: `includeBodies` (default
+  true), `includeFailed` (true), `includePending` (false). Exports run off the main thread and never
+  throw.
+- A HAR file holds exactly what the inspector shows: redacted headers and query parameters stay
+  redacted, and binary bodies are described, not included. To keep secrets out of URLs, add them
+  with `redactQueryParameters(...)`.
+- Files go to the app's cache (Android), the temporary folder (iOS) or the system temp folder
+  (desktop), under `kotlinspect/exports`, and are deleted after 24 hours.
+
 ## Logging with Kotlog
 
 **Kotlog** is a tiny logging API that ships with Kotlinspect. Every `Kotlog` entry prints the usual

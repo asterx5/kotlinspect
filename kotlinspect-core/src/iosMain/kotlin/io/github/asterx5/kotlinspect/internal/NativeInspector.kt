@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalForeignApi::class, ExperimentalCoroutinesApi::class)
+@file:OptIn(ExperimentalForeignApi::class, ExperimentalCoroutinesApi::class, ExperimentalKotlinspectApi::class)
 
 package io.github.asterx5.kotlinspect.internal
 
@@ -46,7 +46,23 @@ import platform.Foundation.appendAttributedString
 import platform.Foundation.create
 import platform.UIKit.NSFontAttributeName
 import platform.UIKit.NSForegroundColorAttributeName
+import io.github.asterx5.kotlinspect.ExperimentalKotlinspectApi
+import io.github.asterx5.kotlinspect.HarExportOptions
+import io.github.asterx5.kotlinspect.HarExportResult
+import io.github.asterx5.kotlinspect.internal.har.HarExporter
+import io.github.asterx5.kotlinspect.internal.har.HarSelection
+import platform.Foundation.NSURL
 import platform.UIKit.UIAction
+import platform.UIKit.UIActivityViewController
+import platform.UIKit.UIAlertAction
+import platform.UIKit.UIAlertActionStyleCancel
+import platform.UIKit.UIAlertActionStyleDefault
+import platform.UIKit.UIAlertController
+import platform.UIKit.UIAlertControllerStyleActionSheet
+import platform.UIKit.UIAlertControllerStyleAlert
+import platform.UIKit.popoverPresentationController
+import platform.darwin.dispatch_async
+import platform.darwin.dispatch_get_main_queue
 import platform.UIKit.UIBarButtonItem
 import platform.UIKit.UIBarButtonSystemItem
 import platform.UIKit.UIButton
@@ -283,6 +299,7 @@ internal class NativeInspector(
                 add(action("New session", "plus") { viewedSession.value = runtime.startSession(null, emptySet(), emptyMap(), null) })
                 if (viewedId != null && viewedId != currentId) add(action("Record here", "record.circle") { runtime.switchSession(viewedId) })
                 if (viewedId != null) {
+                    add(action("Export as HAR", "square.and.arrow.up") { exportHar(HarTarget.Session(viewedId), sessionsItem) })
                     add(action("Clear calls and logs", "eraser") { runtime.clearSession(viewedId) })
                     add(action("Delete session", "trash", destructive = true) {
                         runtime.deleteSession(viewedId)
@@ -595,7 +612,7 @@ internal class NativeInspector(
         }
         tabs.addAction(UIAction.actionWithHandler { _ -> render() }, forControlEvents = UIControlEventValueChanged)
 
-        controller.navigationItem.rightBarButtonItem = UIBarButtonItem(
+        val copyItem = UIBarButtonItem(
             image = UIImage.systemImageNamed("doc.on.doc"),
             menu = UIMenu.menuWithTitle(
                 title = "Copy",
@@ -607,6 +624,14 @@ internal class NativeInspector(
                 ),
             ),
         )
+        val shareItem = UIBarButtonItem(image = UIImage.systemImageNamed("square.and.arrow.up"), menu = null)
+        shareItem.primaryAction = UIAction.actionWithTitle(
+            title = "Share as HAR",
+            image = UIImage.systemImageNamed("square.and.arrow.up"),
+            identifier = null,
+            handler = { _ -> exportHar(HarTarget.Call(recordId), shareItem) },
+        )
+        controller.navigationItem.rightBarButtonItems = listOf(copyItem, shareItem)
 
         detailJob?.cancel()
         detailJob = scope.launch {
@@ -703,6 +728,79 @@ internal class NativeInspector(
             if (didShowViewController === calls.controller) detailJob?.cancel()
         }
     }
+
+    // region HAR export
+
+    /** The controller on top of the inspector, to present sheets and alerts from. */
+    private fun topController(): UIViewController {
+        var top: UIViewController = root
+        while (true) top = top.presentedViewController ?: break
+        return top
+    }
+
+    /**
+     * Asks whether to include bodies, exports, then opens the share sheet. UIAlertController cannot
+     * hold a switch, so the choice is two buttons. On iPad the sheets are popovers from [anchor].
+     */
+    private fun exportHar(target: HarTarget, anchor: UIBarButtonItem) {
+        val ask = UIAlertController.alertControllerWithTitle(
+            title = if (target is HarTarget.Call) "Share as HAR" else "Export as HAR",
+            message = "HAR files contain request data. Sensitive headers are already redacted.",
+            preferredStyle = UIAlertControllerStyleActionSheet,
+        )
+        ask.addAction(UIAlertAction.actionWithTitle("Include bodies", UIAlertActionStyleDefault) { _ -> runExport(target, true, anchor) })
+        ask.addAction(UIAlertAction.actionWithTitle("Without bodies", UIAlertActionStyleDefault) { _ -> runExport(target, false, anchor) })
+        ask.addAction(UIAlertAction.actionWithTitle("Cancel", UIAlertActionStyleCancel, null))
+        ask.popoverPresentationController?.barButtonItem = anchor
+        topController().presentViewController(ask, animated = true, completion = null)
+    }
+
+    private fun runExport(target: HarTarget, includeBodies: Boolean, anchor: UIBarButtonItem) {
+        scope.launch {
+            val total = when (target) {
+                is HarTarget.Session -> runtime.database.records().countForHar(target.sessionId, listOf("Complete", "Failed", "Cancelled"))
+                is HarTarget.Call -> 1
+            }
+            // Large exports show their progress; small ones finish before an alert would settle.
+            val progress = if (total > 200) {
+                UIAlertController.alertControllerWithTitle("Exporting…", "0 of $total", UIAlertControllerStyleAlert).also {
+                    topController().presentViewController(it, animated = true, completion = null)
+                }
+            } else {
+                null
+            }
+            val result = HarExporter.export(
+                runtime,
+                when (target) {
+                    is HarTarget.Session -> HarSelection.Session(target.sessionId)
+                    is HarTarget.Call -> HarSelection.Records(listOf(target.recordId))
+                },
+                HarExportOptions(includeBodies = includeBodies),
+                onProgress = { written, all ->
+                    if (progress != null && (written % 50 == 0 || written == all)) {
+                        dispatch_async(dispatch_get_main_queue()) { progress.message = "$written of $all" }
+                    }
+                },
+            )
+            val show = {
+                when (result) {
+                    is HarExportResult.Success -> {
+                        val sheet = UIActivityViewController(activityItems = listOf(NSURL.fileURLWithPath(result.filePath)), applicationActivities = null)
+                        sheet.popoverPresentationController?.barButtonItem = anchor
+                        topController().presentViewController(sheet, animated = true, completion = null)
+                    }
+                    is HarExportResult.Failure -> {
+                        val alert = UIAlertController.alertControllerWithTitle("Export failed", result.reason, UIAlertControllerStyleAlert)
+                        alert.addAction(UIAlertAction.actionWithTitle("OK", UIAlertActionStyleDefault, null))
+                        topController().presentViewController(alert, animated = true, completion = null)
+                    }
+                }
+            }
+            if (progress != null) progress.dismissViewControllerAnimated(true) { show() } else show()
+        }
+    }
+
+    // endregion
 
     private fun action(title: String, symbol: String, destructive: Boolean = false, handler: () -> Unit): UIAction =
         UIAction.actionWithTitle(title = title, image = UIImage.systemImageNamed(symbol), identifier = null, handler = { _ -> handler() })

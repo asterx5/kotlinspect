@@ -53,6 +53,30 @@ abstract interface io.github.asterx5.kotlinspect/CaptureHandle { // io.github.as
     abstract fun responseReceived(io.github.asterx5.kotlinspect/CapturedResponse) // io.github.asterx5.kotlinspect/CaptureHandle.responseReceived|responseReceived(io.github.asterx5.kotlinspect.CapturedResponse){}[0]
 }
 
+sealed interface io.github.asterx5.kotlinspect/HarExportResult { // io.github.asterx5.kotlinspect/HarExportResult|null[0]
+    final class Failure : io.github.asterx5.kotlinspect/HarExportResult { // io.github.asterx5.kotlinspect/HarExportResult.Failure|null[0]
+        constructor <init>(kotlin/String) // io.github.asterx5.kotlinspect/HarExportResult.Failure.<init>|<init>(kotlin.String){}[0]
+
+        final val reason // io.github.asterx5.kotlinspect/HarExportResult.Failure.reason|{}reason[0]
+            final fun <get-reason>(): kotlin/String // io.github.asterx5.kotlinspect/HarExportResult.Failure.reason.<get-reason>|<get-reason>(){}[0]
+
+        final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/HarExportResult.Failure.toString|toString(){}[0]
+    }
+
+    final class Success : io.github.asterx5.kotlinspect/HarExportResult { // io.github.asterx5.kotlinspect/HarExportResult.Success|null[0]
+        constructor <init>(kotlin/String, kotlin/Int, kotlin/Long) // io.github.asterx5.kotlinspect/HarExportResult.Success.<init>|<init>(kotlin.String;kotlin.Int;kotlin.Long){}[0]
+
+        final val byteSize // io.github.asterx5.kotlinspect/HarExportResult.Success.byteSize|{}byteSize[0]
+            final fun <get-byteSize>(): kotlin/Long // io.github.asterx5.kotlinspect/HarExportResult.Success.byteSize.<get-byteSize>|<get-byteSize>(){}[0]
+        final val entryCount // io.github.asterx5.kotlinspect/HarExportResult.Success.entryCount|{}entryCount[0]
+            final fun <get-entryCount>(): kotlin/Int // io.github.asterx5.kotlinspect/HarExportResult.Success.entryCount.<get-entryCount>|<get-entryCount>(){}[0]
+        final val filePath // io.github.asterx5.kotlinspect/HarExportResult.Success.filePath|{}filePath[0]
+            final fun <get-filePath>(): kotlin/String // io.github.asterx5.kotlinspect/HarExportResult.Success.filePath.<get-filePath>|<get-filePath>(){}[0]
+
+        final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/HarExportResult.Success.toString|toString(){}[0]
+    }
+}
+
 sealed interface io.github.asterx5.kotlinspect/RetentionPolicy { // io.github.asterx5.kotlinspect/RetentionPolicy|null[0]
     final class MaxAge : io.github.asterx5.kotlinspect/RetentionPolicy { // io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge|null[0]
         constructor <init>(kotlin.time/Duration) // io.github.asterx5.kotlinspect/RetentionPolicy.MaxAge.<init>|<init>(kotlin.time.Duration){}[0]
@@ -236,6 +260,17 @@ final class io.github.asterx5.kotlinspect/CapturedTimings { // io.github.asterx5
         final fun <get-wait>(): kotlin/Long? // io.github.asterx5.kotlinspect/CapturedTimings.wait.<get-wait>|<get-wait>(){}[0]
 }
 
+final class io.github.asterx5.kotlinspect/HarExportOptions { // io.github.asterx5.kotlinspect/HarExportOptions|null[0]
+    constructor <init>(kotlin/Boolean = ..., kotlin/Boolean = ..., kotlin/Boolean = ...) // io.github.asterx5.kotlinspect/HarExportOptions.<init>|<init>(kotlin.Boolean;kotlin.Boolean;kotlin.Boolean){}[0]
+
+    final val includeBodies // io.github.asterx5.kotlinspect/HarExportOptions.includeBodies|{}includeBodies[0]
+        final fun <get-includeBodies>(): kotlin/Boolean // io.github.asterx5.kotlinspect/HarExportOptions.includeBodies.<get-includeBodies>|<get-includeBodies>(){}[0]
+    final val includeFailed // io.github.asterx5.kotlinspect/HarExportOptions.includeFailed|{}includeFailed[0]
+        final fun <get-includeFailed>(): kotlin/Boolean // io.github.asterx5.kotlinspect/HarExportOptions.includeFailed.<get-includeFailed>|<get-includeFailed>(){}[0]
+    final val includePending // io.github.asterx5.kotlinspect/HarExportOptions.includePending|{}includePending[0]
+        final fun <get-includePending>(): kotlin/Boolean // io.github.asterx5.kotlinspect/HarExportOptions.includePending.<get-includePending>|<get-includePending>(){}[0]
+}
+
 final class io.github.asterx5.kotlinspect/KotlinspectCall { // io.github.asterx5.kotlinspect/KotlinspectCall|null[0]
     final val durationMillis // io.github.asterx5.kotlinspect/KotlinspectCall.durationMillis|{}durationMillis[0]
         final fun <get-durationMillis>(): kotlin/Long? // io.github.asterx5.kotlinspect/KotlinspectCall.durationMillis.<get-durationMillis>|<get-durationMillis>(){}[0]
@@ -401,6 +436,8 @@ final object io.github.asterx5.kotlinspect/Kotlinspect { // io.github.asterx5.ko
     final fun setBubbleVisible(kotlin/Boolean) // io.github.asterx5.kotlinspect/Kotlinspect.setBubbleVisible|setBubbleVisible(kotlin.Boolean){}[0]
     final fun startSession(kotlin/String? = ..., kotlin.collections/Set<kotlin/String> = ..., kotlin.collections/Map<kotlin/String, kotlin/String> = ..., io.github.asterx5.kotlinspect/RetentionPolicy? = ...): kotlin/String? // io.github.asterx5.kotlinspect/Kotlinspect.startSession|startSession(kotlin.String?;kotlin.collections.Set<kotlin.String>;kotlin.collections.Map<kotlin.String,kotlin.String>;io.github.asterx5.kotlinspect.RetentionPolicy?){}[0]
     final fun switchSession(kotlin/String) // io.github.asterx5.kotlinspect/Kotlinspect.switchSession|switchSession(kotlin.String){}[0]
+    final suspend fun exportHar(kotlin.collections/List<kotlin/String>, io.github.asterx5.kotlinspect/HarExportOptions = ...): io.github.asterx5.kotlinspect/HarExportResult // io.github.asterx5.kotlinspect/Kotlinspect.exportHar|exportHar(kotlin.collections.List<kotlin.String>;io.github.asterx5.kotlinspect.HarExportOptions){}[0]
+    final suspend fun exportHar(kotlin/String, io.github.asterx5.kotlinspect/HarExportOptions = ...): io.github.asterx5.kotlinspect/HarExportResult // io.github.asterx5.kotlinspect/Kotlinspect.exportHar|exportHar(kotlin.String;io.github.asterx5.kotlinspect.HarExportOptions){}[0]
 }
 
 final object io.github.asterx5.kotlinspect/KotlinspectIngest { // io.github.asterx5.kotlinspect/KotlinspectIngest|null[0]

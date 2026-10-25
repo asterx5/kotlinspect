@@ -140,7 +140,20 @@ Box(Modifier.fillMaxSize()) {
 For a SwiftUI or UIKit iOS app, read `references/ios-native.md`: it needs a framework `export`
 line and then either the `KotlinspectSwiftUI` Swift package or a small wrapper.
 
-## 7. Logging with Kotlog (optional)
+## 7. Exporting HAR files (optional)
+
+When the user wants to share captured traffic (with a backend team, in a bug report), point them
+to *Export as HAR* in the inspector's sessions panel or *Share as HAR* on a call, or use the API:
+
+```kotlin
+@OptIn(ExperimentalKotlinspectApi::class)
+val result = Kotlinspect.exportHar(sessionId)   // HarExportResult.Success(filePath, entryCount, byteSize) or Failure(reason)
+```
+
+The file is HAR 1.2 (Chrome DevTools, Charles, Proxyman) and contains only what the inspector
+shows, so redaction still applies. Suggest `redactQueryParameters(...)` if URLs carry secrets.
+
+## 8. Logging with Kotlog (optional)
 
 Kotlinspect includes **Kotlog**, a small logging API. Entries print the platform way (Logcat,
 NSLog, console) and appear in the inspector's Logs tab, filterable by tag, layer and level, in
@@ -167,7 +180,7 @@ Kotlog.log(LogLevel.Info, TAG, "Signed in", "usecase")
 - From Swift: export `io.github.asterx5:kotlog` in the framework (see `references/ios-native.md`),
   then `Kotlog.shared.d(tag: "Feed", message: "Loaded", layer: LogLayer.datasource.value)`.
 
-## 8. Verify
+## 9. Verify
 
 - Run a Gradle sync and build the module (for example `./gradlew :shared:compileKotlinMetadata`
   or the Android `assembleDebug`). Fix imports if the build reports unresolved Kotlinspect symbols.
