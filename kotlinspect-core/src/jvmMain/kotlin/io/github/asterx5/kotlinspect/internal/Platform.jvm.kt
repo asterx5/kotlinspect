@@ -51,4 +51,7 @@ internal actual object Platform {
     actual fun openInspector(host: KotlinspectHost, sessionId: String?) {
         providers.firstOrNull()?.let { runCatching { it.openInspector(host, sessionId) } }
     }
+
+    // Desktop has no share sheet: the inspector saves exports where the user chooses.
+    actual fun shareFile(path: String) = Unit
 }

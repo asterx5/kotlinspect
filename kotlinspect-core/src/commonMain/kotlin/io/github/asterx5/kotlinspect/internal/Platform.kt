@@ -27,6 +27,9 @@ internal expect object Platform {
 
     /** Opens the inspector on [sessionId], or on the current session when null. */
     fun openInspector(host: KotlinspectHost, sessionId: String?)
+
+    /** Offers an exported file through the system share sheet, where there is one. */
+    fun shareFile(path: String)
 }
 
 internal fun Platform.createDatabase(config: ResolvedConfig): KotlinspectDatabase =

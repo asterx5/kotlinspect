@@ -8,6 +8,13 @@
             android:authorities="${applicationId}.kotlinspect-init"
             android:exported="false" />
 
+        <!-- Serves exported HAR files to the share target, read-only, from cache/kotlinspect/exports only. -->
+        <provider
+            android:name="io.github.asterx5.kotlinspect.internal.KotlinspectFileProvider"
+            android:authorities="${applicationId}.kotlinspect.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
     </application>
 
 </manifest>

@@ -31,6 +31,10 @@ internal actual object Platform {
     actual val isReady: Boolean
         get() = appContext != null
 
+    /** The application context, once captured at startup. */
+    val context: Context?
+        get() = appContext
+
     actual val isDebugBuild: Boolean
         get() = appContext?.let { (it.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0 } ?: false
 
@@ -61,6 +65,10 @@ internal actual object Platform {
 
     actual fun openInspector(host: KotlinspectHost, sessionId: String?) {
         providers.firstOrNull()?.let { runCatching { it.openInspector(host, sessionId) } }
+    }
+
+    actual fun shareFile(path: String) {
+        appContext?.let { runCatching { KotlinspectFileProvider.share(it, java.io.File(path)) } }
     }
 }
 

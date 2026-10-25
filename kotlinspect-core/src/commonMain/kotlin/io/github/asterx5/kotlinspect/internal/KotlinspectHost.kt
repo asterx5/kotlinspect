@@ -58,6 +58,48 @@ public class KotlinspectHost internal constructor(internal val runtime: Kotlinsp
     }
 
     public fun sessions(): Flow<List<SessionEntity>> = runtime.database.sessions().observeAll()
+
+    /**
+     * Exports a session or one call as HAR. [outputPath] writes to a file the user chose (desktop);
+     * otherwise the file goes to the export folder, ready for [shareFile]. [onProgress] receives
+     * (written, total).
+     */
+    @OptIn(io.github.asterx5.kotlinspect.ExperimentalKotlinspectApi::class)
+    public suspend fun exportHar(
+        target: HarTarget,
+        includeBodies: Boolean,
+        outputPath: String? = null,
+        onProgress: ((Int, Int) -> Unit)? = null,
+    ): io.github.asterx5.kotlinspect.HarExportResult = io.github.asterx5.kotlinspect.internal.har.HarExporter.export(
+        runtime = runtime,
+        selection = when (target) {
+            is HarTarget.Session -> io.github.asterx5.kotlinspect.internal.har.HarSelection.Session(target.sessionId)
+            is HarTarget.Call -> io.github.asterx5.kotlinspect.internal.har.HarSelection.Records(listOf(target.recordId))
+        },
+        options = io.github.asterx5.kotlinspect.HarExportOptions(includeBodies = includeBodies),
+        outputPath = outputPath,
+        onProgress = onProgress,
+    )
+
+    /** The file name an export of [target] gets, for save dialogs. */
+    public suspend fun suggestedHarFileName(target: HarTarget): String {
+        val name = when (target) {
+            is HarTarget.Session -> runtime.database.sessions().get(target.sessionId)?.name ?: "session"
+            is HarTarget.Call -> runtime.database.records().get(target.recordId)?.let { it.endpointKey ?: it.path } ?: "call"
+        }
+        return io.github.asterx5.kotlinspect.internal.har.HarExporter.fileName(name, runtime.clock())
+    }
+
+    /** Number of calls an export of the session would contain, to decide whether to show progress. */
+    public suspend fun harEntryCount(target: HarTarget): Int = when (target) {
+        is HarTarget.Session -> runtime.database.records().countForHar(target.sessionId, listOf("Complete", "Failed", "Cancelled"))
+        is HarTarget.Call -> 1
+    }
+
+    /** Opens the system share sheet for an exported file (Android, iOS). */
+    public fun shareFile(path: String) {
+        Platform.shareFile(path)
+    }
     public fun sessionCounts(): Flow<List<SessionCount>> = runtime.database.records().observeSessionCounts()
     public fun summaries(sessionId: String): Flow<List<RecordSummary>> = runtime.database.records().observeSummaries(sessionId)
     public fun record(recordId: String): Flow<RecordEntity?> = runtime.database.records().observe(recordId)
@@ -103,4 +145,11 @@ public interface KotlinspectUiProvider {
 
     /** Opens the inspector, showing [sessionId] or the current session. */
     public fun openInspector(host: KotlinspectHost, sessionId: String?)
+}
+
+/** What a HAR export from the inspector covers. */
+@InternalKotlinspectApi
+public sealed class HarTarget {
+    public class Session(public val sessionId: String) : HarTarget()
+    public class Call(public val recordId: String) : HarTarget()
 }

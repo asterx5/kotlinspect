@@ -5,6 +5,8 @@ import io.github.asterx5.kotlinspect.internal.KotlinspectRuntime
 import io.github.asterx5.kotlinspect.internal.Platform
 import io.github.asterx5.kotlinspect.internal.ResolvedConfig
 import io.github.asterx5.kotlinspect.internal.createDatabase
+import io.github.asterx5.kotlinspect.internal.har.HarExporter
+import io.github.asterx5.kotlinspect.internal.har.HarSelection
 import io.github.asterx5.kotlinspect.internal.toCall
 import io.github.asterx5.kotlinspect.internal.toSession
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -147,6 +149,25 @@ public object Kotlinspect {
     public fun calls(sessionId: String): Flow<List<KotlinspectCall>> =
         runtimeFlow { rt -> rt.database.records().observeSummaries(sessionId).map { list -> list.map { it.toCall() } } }
             .withDefault(emptyList())
+
+    // endregion
+
+    // region Export
+
+    /**
+     * Writes the session with [sessionId] as a HAR 1.2 file, which opens in Chrome DevTools,
+     * Charles, Proxyman and Insomnia. The file holds what the inspector shows, so redacted headers
+     * stay redacted. Runs off the main thread and never throws: problems, including a disabled
+     * Kotlinspect or an unknown session, come back as [HarExportResult.Failure].
+     */
+    @ExperimentalKotlinspectApi
+    public suspend fun exportHar(sessionId: String, options: HarExportOptions = HarExportOptions()): HarExportResult =
+        HarExporter.export(runtimeOrNull(), HarSelection.Session(sessionId), options)
+
+    /** Writes the calls with [recordIds] (see [KotlinspectCall.id]) as a HAR 1.2 file. */
+    @ExperimentalKotlinspectApi
+    public suspend fun exportHar(recordIds: List<String>, options: HarExportOptions = HarExportOptions()): HarExportResult =
+        HarExporter.export(runtimeOrNull(), HarSelection.Records(recordIds), options)
 
     // endregion
 

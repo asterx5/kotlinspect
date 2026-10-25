@@ -11,6 +11,22 @@ plugins {
 group = "io.github.asterx5"
 version = providers.gradleProperty("kotlinspect.version").get()
 
+// The library version as a constant, for the "creator" of exported HAR files.
+val generateBuildInfo = tasks.register("generateKotlinspectBuildInfo") {
+    val outputDir = layout.buildDirectory.dir("generated/kotlinspect-buildinfo/kotlin")
+    val libraryVersion = version.toString()
+    inputs.property("version", libraryVersion)
+    outputs.dir(outputDir)
+    doLast {
+        val file = outputDir.get().file("io/github/asterx5/kotlinspect/internal/BuildInfo.kt").asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            "package io.github.asterx5.kotlinspect.internal\n\n" +
+                "internal object BuildInfo {\n    const val VERSION: String = \"$libraryVersion\"\n}\n",
+        )
+    }
+}
+
 kotlin {
     explicitApi()
 
@@ -71,6 +87,9 @@ kotlin {
     }
 
     sourceSets {
+        commonMain {
+            kotlin.srcDir(generateBuildInfo)
+        }
         commonMain.dependencies {
             api(libs.ks.ktor.client.core)
             api(project(":kotlog"))

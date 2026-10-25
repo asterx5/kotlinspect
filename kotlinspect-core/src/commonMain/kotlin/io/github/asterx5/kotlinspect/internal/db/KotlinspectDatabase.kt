@@ -74,6 +74,21 @@ internal interface RecordDao {
     @Query("SELECT COUNT(*) FROM records")
     suspend fun countAll(): Int
 
+    // HAR export: one session's records in start order, a page at a time (keyset paging).
+
+    @Query("SELECT COUNT(*) FROM records WHERE sessionId = :sessionId AND state IN (:states)")
+    suspend fun countForHar(sessionId: String, states: List<String>): Int
+
+    @Query(
+        "SELECT * FROM records WHERE sessionId = :sessionId AND state IN (:states) " +
+            "AND (startedAt > :afterStart OR (startedAt = :afterStart AND id > :afterId)) " +
+            "ORDER BY startedAt, id LIMIT :limit",
+    )
+    suspend fun harPage(sessionId: String, states: List<String>, afterStart: Long, afterId: String, limit: Int): List<RecordEntity>
+
+    @Query("SELECT * FROM records WHERE id IN (:ids)")
+    suspend fun byIds(ids: List<String>): List<RecordEntity>
+
     @Query("UPDATE records SET state = 'Cancelled', error = :reason WHERE state = 'Pending'")
     suspend fun interruptPending(reason: String)
 

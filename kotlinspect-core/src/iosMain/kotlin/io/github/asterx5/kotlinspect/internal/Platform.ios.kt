@@ -8,12 +8,17 @@ import androidx.sqlite.SQLiteDriver
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import io.github.asterx5.kotlinspect.internal.db.KotlinspectDatabase
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
+import platform.CoreGraphics.CGRectMake
+import platform.Foundation.NSURL
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
 import platform.Foundation.NSUserDomainMask
+import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIAdaptivePresentationControllerDelegateProtocol
+import platform.UIKit.popoverPresentationController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIColor
 import platform.UIKit.UIModalPresentationPageSheet
@@ -67,6 +72,10 @@ internal actual object Platform {
 
     actual fun openInspector(host: KotlinspectHost, sessionId: String?) {
         dispatch_async(dispatch_get_main_queue()) { IosUi.presentInspector(host, sessionId) }
+    }
+
+    actual fun shareFile(path: String) {
+        dispatch_async(dispatch_get_main_queue()) { IosUi.share(path) }
     }
 }
 
@@ -189,6 +198,23 @@ internal object IosUi {
         previousKeyWindow?.makeKeyWindow()
         previousKeyWindow = null
         overlayWindow?.hidden = false
+    }
+
+    /**
+     * Shows the share sheet for an exported file over whatever is on top: the inspector when it is
+     * open, otherwise the app. On iPad the sheet is a popover anchored to the bottom center.
+     */
+    fun share(path: String) {
+        val window = inspector ?: activeScene()?.windows?.filterIsInstance<UIWindow>()?.firstOrNull { it.isKeyWindow() } ?: return
+        var top = window.rootViewController ?: return
+        while (true) top = top.presentedViewController ?: break
+        val sheet = UIActivityViewController(activityItems = listOf(NSURL.fileURLWithPath(path)), applicationActivities = null)
+        sheet.popoverPresentationController?.let { popover ->
+            popover.sourceView = top.view
+            val (w, h) = top.view.bounds.useContents { size.width to size.height }
+            popover.sourceRect = CGRectMake(w / 2, h - 1.0, 1.0, 1.0)
+        }
+        top.presentViewController(sheet, animated = true, completion = null)
     }
 
     /** Handles the user swiping the sheet down. */
