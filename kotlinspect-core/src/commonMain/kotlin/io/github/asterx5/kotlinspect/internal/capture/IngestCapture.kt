@@ -9,6 +9,7 @@ import io.github.asterx5.kotlinspect.ExperimentalKotlinspectApi
 import io.github.asterx5.kotlinspect.internal.CaptureExtras
 import io.github.asterx5.kotlinspect.internal.Codecs
 import io.github.asterx5.kotlinspect.internal.KotlinspectRuntime
+import io.github.asterx5.kotlinspect.internal.LateShadow
 import io.github.asterx5.kotlinspect.internal.RecordSources
 import io.github.asterx5.kotlinspect.internal.ResolvedConfig
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
@@ -32,7 +33,7 @@ import io.github.asterx5.kotlinspect.CapturedBody as IngestedBody
 internal class IngestCapture private constructor(
     private val runtime: KotlinspectRuntime,
     private val source: String,
-) : CaptureHandle {
+) : CaptureHandle, LateShadow {
     private val ended = AtomicBoolean(false)
 
     // Op loop state.
@@ -127,6 +128,29 @@ internal class IngestCapture private constructor(
         runtime.fillRecord(outer, extras)
     }
 
+    override val recordId: String get() = record?.id.orEmpty()
+
+    override suspend fun becomeShadowOf(outerId: String) {
+        val stored = record ?: return
+        runtime.dropRecord(stored.id)
+        extras = extras.fillFrom(
+            CaptureExtras(
+                protocol = stored.protocol,
+                serverIpAddress = stored.serverIpAddress,
+                operationName = stored.operationName,
+                timingBlocked = stored.timingBlocked,
+                timingDns = stored.timingDns,
+                timingConnect = stored.timingConnect,
+                timingSsl = stored.timingSsl,
+                timingSend = stored.timingSend,
+                timingWait = stored.timingWait,
+                timingReceive = stored.timingReceive,
+            ),
+        )
+        record = null
+        shadowOf = outerId
+    }
+
     /**
      * Adds timings that became known after the record ended, such as OkHttp's receive time once
      * the app has read the body. Only empty timing fields are filled.
@@ -216,6 +240,7 @@ internal class IngestCapture private constructor(
                 }
                 capture.record = record
                 runtime.beginInLoop(record, sessionRef)
+                runtime.trackInner(capture, record)
             }
             capture
         } catch (e: Throwable) {

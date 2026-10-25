@@ -133,6 +133,7 @@ internal class NativeInspector(
 
     val root: UIViewController = UINavigationController(rootViewController = calls.controller).apply {
         view.tintColor = colors.accent.ui()
+        view.setTestIdentifier("kotlinspect.inspector")
         delegate = navigationDelegate
     }
 

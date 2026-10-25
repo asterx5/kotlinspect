@@ -25,7 +25,7 @@ Find out:
 - **What UI the apps use.** Look for Compose Multiplatform or Jetpack Compose (`org.jetbrains.compose`
   plugin, `@Composable`) versus a SwiftUI/UIKit iOS app (Swift views in `iosApp/` and no
   `ComposeUIViewController`).
-- **Versions.** Kotlinspect needs Kotlin 2.1.20+, Ktor 3.0+, Compose 1.7+ (if Compose is used),
+- **Versions.** Kotlinspect needs Kotlin 2.1.20+ (2.4+ for iOS targets), Ktor 3.0+, Compose 1.7+ (if Compose is used),
   Android minSdk 24 and compileSdk 34+. If the project is below these, say which one and ask
   before upgrading anything, because Gradle would otherwise pull the newer versions in silently.
 
@@ -35,6 +35,7 @@ Find out:
 |---|---|
 | Uses Compose anywhere (Android, desktop, Compose Multiplatform iOS) | `io.github.asterx5:kotlinspect` |
 | iOS UI is SwiftUI or UIKit, or only capture is wanted | `io.github.asterx5:kotlinspect-core` (no Compose) |
+| A pure iOS app with no Kotlin at all (URLSession, Alamofire, Moya) | The **Swift package**: read `references/swift-package.md` and skip the Gradle steps |
 
 `kotlinspect` already includes `kotlinspect-core`; never add both. Use the latest version from
 https://central.sonatype.com/artifact/io.github.asterx5/kotlinspect or the badge in the GitHub
@@ -137,8 +138,8 @@ Box(Modifier.fillMaxSize()) {
 }
 ```
 
-For a SwiftUI or UIKit iOS app, read `references/ios-native.md`: it needs a framework `export`
-line and then either the `KotlinspectSwiftUI` Swift package or a small wrapper.
+For a SwiftUI or UIKit iOS app in a KMP project, read `references/ios-native.md`: it needs a
+framework `export` line and a small wrapper. (The Swift package is only for apps without Kotlin.)
 
 ## 7. Exporting HAR files (optional)
 

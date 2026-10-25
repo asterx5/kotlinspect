@@ -1,0 +1,49 @@
+# XcodeGen spec for the Swift sample: `xcodegen generate` in this folder creates
+# KotlinspectSample.xcodeproj (not committed). The app depends on the Kotlinspect Swift package
+# at the repository root by path, and contains no Kotlin code.
+name: KotlinspectSample
+options:
+  bundleIdPrefix: io.github.asterx5.kotlinspect
+  deploymentTarget:
+    iOS: "15.0"
+packages:
+  Kotlinspect:
+    path: ../..
+targets:
+  KotlinspectSample:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    dependencies:
+      - package: Kotlinspect
+        product: Kotlinspect
+      - package: Kotlinspect
+        product: KotlinspectAlamofire
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.asterx5.kotlinspect.sample
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Kotlinspect Sample
+        CODE_SIGNING_ALLOWED: NO
+        SWIFT_VERSION: "5.9"
+  KotlinspectSampleUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: KotlinspectSample
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+        SWIFT_VERSION: "5.9"
+schemes:
+  KotlinspectSample:
+    build:
+      targets:
+        KotlinspectSample: all
+        KotlinspectSampleUITests: [test]
+    test:
+      config: Debug
+      targets: [KotlinspectSampleUITests]

@@ -36,22 +36,10 @@ picks up the new Kotlin framework.
 
 ## 2. Place the overlay (optional)
 
-### SwiftUI with the Swift package
+KMP apps never add the Kotlinspect Swift package (it is for apps with no Kotlin; it would add a
+second Kotlin runtime). They place the overlay through their own framework:
 
-In Xcode: File → Add Package Dependencies → `https://github.com/asterx5/kotlinspect`, choose the
-same version as the Gradle dependency, add the `KotlinspectSwiftUI` product to the app target.
-
-```swift
-import KotlinspectSwiftUI
-
-ContentView()
-    .overlay(KotlinspectOverlay())                // current session
-    // .overlay(KotlinspectOverlay(sessionId: id)) // only one session
-```
-
-`KotlinspectInspector.open()` opens the inspector from a debug menu or button.
-
-### SwiftUI without the package
+### SwiftUI
 
 Add this to the app (replace `Shared` with the framework's module name if Swift needs the import):
 

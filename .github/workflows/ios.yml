@@ -1,0 +1,143 @@
+name: iOS
+
+# Verifies the Swift package on macOS: XCFramework build, package tests on a simulator, public
+# interface check, the Swift sample's UI tests in Debug and Release, and dependency checks.
+# It never publishes anything.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  KOTLINSPECT_LOCAL_XCFRAMEWORK: kotlinspect-core/build/XCFrameworks/release/KotlinspectCore.xcframework
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Kotlin tests on the iOS simulator
+        run: ./gradlew :kotlinspect-core:iosSimulatorArm64Test :kotlog:iosSimulatorArm64Test --console=plain
+
+      - name: Build the XCFramework
+        run: ./gradlew :kotlinspect-core:assembleKotlinspectCoreReleaseXCFramework --console=plain
+
+      - name: Inspect the framework
+        run: |
+          set -e
+          ls -la "$KOTLINSPECT_LOCAL_XCFRAMEWORK"
+          BIN="$KOTLINSPECT_LOCAL_XCFRAMEWORK/ios-arm64/KotlinspectCore.framework/KotlinspectCore"
+          du -h "$BIN"
+          # kotlinspect-core contains the Ktor plugin by design (it is one artifact), so Ktor's
+          # client core can be inside; no Ktor engine may be.
+          echo "Ktor symbols: $(nm "$BIN" | grep -c 'io.ktor' || true)"
+          if nm "$BIN" | grep -q 'io.ktor.client.engine.darwin'; then echo "::error::A Ktor engine is inside the framework"; exit 1; fi
+          (cd kotlinspect-core/build/XCFrameworks/release && ditto -c -k --keepParent KotlinspectCore.xcframework KotlinspectCore.xcframework.zip)
+
+      - name: Pick a simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          for runtime, items in sorted(devices.items(), reverse=True):
+              if "iOS" not in runtime: continue
+              for d in items:
+                  if d["name"].startswith("iPhone"):
+                      print(d["udid"]); sys.exit()
+          ')
+          echo "Using simulator $UDID"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Package tests
+        run: |
+          set -o pipefail
+          xcodebuild test -scheme Kotlinspect-Package -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath build/results/package.xcresult | tee build/package-tests.log | grep -E "Test Case|error:|passed|failed" || true
+          grep -q "TEST SUCCEEDED" build/package-tests.log
+
+      - name: Public Swift interface has no Kotlin types
+        run: |
+          set -e
+          xcodebuild build -scheme Kotlinspect -destination "generic/platform=iOS Simulator" \
+            BUILD_LIBRARY_FOR_DISTRIBUTION=YES -derivedDataPath build/interface > build/interface.log 2>&1 || (tail -50 build/interface.log; exit 1)
+          FILES=$(find build/interface -name "*.swiftinterface" -path "*Kotlinspect.swiftmodule*" ! -name "*.private.swiftinterface")
+          echo "$FILES"
+          test -n "$FILES"
+          if grep -nE '\.shared\b|\bKS[A-Z][A-Za-z]+|\bKotlin(Boolean|Byte|Short|Int|Long|Float|Double|Number|Unit|Array|Throwable|Base)\b' $FILES; then
+            echo "::error::Kotlin types leak into the public Swift interface"; exit 1
+          fi
+
+      - name: Generate the sample project
+        run: |
+          brew install xcodegen
+          cd samples/swift-ios && xcodegen generate
+
+      - name: Sample UI tests (Debug)
+        run: |
+          set -o pipefail
+          cd samples/swift-ios
+          xcodebuild test -project KotlinspectSample.xcodeproj -scheme KotlinspectSample -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" -skip-testing:KotlinspectSampleUITests/ReleaseTests \
+            -resultBundlePath ../../build/results/sample-debug.xcresult | tee ../../build/sample-debug.log | grep -E "Test Case|error:" || true
+          grep -q "TEST SUCCEEDED" ../../build/sample-debug.log
+
+      - name: Sample UI test (Release)
+        run: |
+          set -o pipefail
+          cd samples/swift-ios
+          xcodebuild test -project KotlinspectSample.xcodeproj -scheme KotlinspectSample -configuration Release \
+            -destination "id=${{ steps.sim.outputs.udid }}" -only-testing:KotlinspectSampleUITests/ReleaseTests \
+            -resultBundlePath ../../build/results/sample-release.xcresult | tee ../../build/sample-release.log | grep -E "Test Case|error:" || true
+          grep -q "TEST SUCCEEDED" ../../build/sample-release.log
+
+      - name: Apps using only Kotlinspect never fetch Alamofire
+        run: |
+          set -e
+          ROOT="$PWD"
+          mkdir -p build/scratch/Sources/Scratch && cd build/scratch
+          cat > Package.swift <<EOF
+          // swift-tools-version:5.9
+          import PackageDescription
+          let package = Package(
+              name: "Scratch",
+              platforms: [.iOS(.v14)],
+              dependencies: [.package(path: "$ROOT")],
+              targets: [.target(name: "Scratch", dependencies: [.product(name: "Kotlinspect", package: "kotlinspect")])]
+          )
+          EOF
+          echo 'import Kotlinspect' > Sources/Scratch/Scratch.swift
+          KOTLINSPECT_LOCAL_XCFRAMEWORK="$KOTLINSPECT_LOCAL_XCFRAMEWORK" xcodebuild -resolvePackageDependencies -scheme Scratch > resolve.log 2>&1 || (cat resolve.log; exit 1)
+          cat resolve.log | tail -20
+          if grep -qi alamofire resolve.log; then echo "::error::Alamofire was fetched for a Kotlinspect-only app"; exit 1; fi
+
+      - name: Alamofire floor (5.4.0)
+        run: |
+          set -e
+          sed -i '' 's/.upToNextMajor(from: "5.4.0")/.exact("5.4.0")/' Package.swift
+          xcodebuild build -scheme KotlinspectAlamofire -destination "generic/platform=iOS Simulator" > build/alamofire-floor.log 2>&1 || (tail -50 build/alamofire-floor.log; exit 1)
+          git checkout Package.swift
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-results
+          path: |
+            build/results
+            build/*.log
+            kotlinspect-core/build/XCFrameworks/release/KotlinspectCore.xcframework.zip
+          if-no-files-found: ignore

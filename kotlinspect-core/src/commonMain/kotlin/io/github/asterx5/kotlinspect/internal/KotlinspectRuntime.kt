@@ -233,6 +233,7 @@ internal class KotlinspectRuntime(
         val stored = record.copy(sessionId = sessionId)
         database.records().upsert(stored)
         trackOuter(stored)
+        adoptLateInner(stored)
     }
 
     override fun update(record: RecordEntity) = enqueue { write(record) }
@@ -244,6 +245,7 @@ internal class KotlinspectRuntime(
         val stored = write(record)
         recordSessions.remove(record.id)
         untrackOuter(record.id)
+        untrackInner(record.id)
         _completed.tryEmit(stored)
         scheduleRetention()
     }
@@ -308,6 +310,52 @@ internal class KotlinspectRuntime(
             ?: return null
         outer.claimed = true
         return outer.id
+    }
+
+    // An outer source can report a request a moment after the inner one already started it:
+    // Alamofire delivers event-monitor callbacks asynchronously, so the automatic URLSession
+    // capture may begin first. A late outer record then takes the inner one over.
+
+    private class InFlightInner(val capture: LateShadow, val source: String, val startedAt: Long)
+
+    // Owned by the op loop.
+    private val inFlightInner = mutableMapOf<String, MutableList<InFlightInner>>()
+    private val innerKeys = mutableMapOf<String, String>()
+
+    /** Registers a stored inner record that a late outer record may take over. Op loop only. */
+    fun trackInner(capture: LateShadow, record: RecordEntity) {
+        if (!config.dedupeNestedCaptures || record.source !in INNER_TO_OUTER) return
+        val key = nestedCaptureKey(record.method, record.url) ?: return
+        inFlightInner.getOrPut(key) { mutableListOf() } += InFlightInner(capture, record.source, record.startedAt)
+        innerKeys[record.id] = key
+    }
+
+    private fun untrackInner(recordId: String) {
+        val key = innerKeys.remove(recordId) ?: return
+        val list = inFlightInner[key] ?: return
+        list.removeAll { it.capture.recordId == recordId }
+        if (list.isEmpty()) inFlightInner.remove(key)
+    }
+
+    private suspend fun adoptLateInner(outer: RecordEntity) {
+        if (!config.dedupeNestedCaptures || outer.source !in LATE_OUTER_SOURCES) return
+        val key = outerKeys[outer.id] ?: return
+        val list = inFlightInner[key] ?: return
+        val inner = list
+            .filter { INNER_TO_OUTER[it.source] == outer.source && it.startedAt >= outer.startedAt - LATE_OUTER_MILLIS }
+            .minByOrNull { it.startedAt }
+            ?: return
+        list.remove(inner)
+        if (list.isEmpty()) inFlightInner.remove(key)
+        innerKeys.remove(inner.capture.recordId)
+        inFlightOuter[key]?.firstOrNull { it.id == outer.id }?.claimed = true
+        inner.capture.becomeShadowOf(outer.id)
+    }
+
+    /** Deletes a record that turned out to be a duplicate. Op loop only. */
+    suspend fun dropRecord(recordId: String) {
+        recordSessions.remove(recordId)
+        database.records().deleteIds(listOf(recordId))
     }
 
     /**
@@ -502,6 +550,16 @@ internal class KotlinspectRuntime(
         private val INNER_TO_OUTER = mapOf("okhttp" to RecordSources.KTOR, "urlsession" to "alamofire")
         private val OUTER_SOURCES = INNER_TO_OUTER.values.toSet()
 
+        /**
+         * Outer sources whose reports can arrive after the inner capture began. Only Alamofire:
+         * Ktor always begins before its OkHttp engine runs, so an earlier OkHttp record is a
+         * different request.
+         */
+        private val LATE_OUTER_SOURCES = setOf("alamofire")
+
+        /** How long before a late outer record an inner one may have started and still be its duplicate. */
+        private const val LATE_OUTER_MILLIS = 2_000L
+
         private const val LOG_BATCH_DELAY_MILLIS = 50L
         private const val MAX_LOG_BATCH = 500
         private const val MAX_LOG_MESSAGE = 32_000
@@ -564,4 +622,12 @@ internal fun nestedCaptureKey(method: String, url: String): String? {
     val query = parsed.encodedQuery.let { if (it.isEmpty()) "" else "?$it" }
     val path = parsed.encodedPath.ifEmpty { "/" }
     return "${method.uppercase()} ${parsed.protocol.name}://${parsed.host.lowercase()}:${parsed.port}$path$query"
+}
+
+/** An inner capture that can turn into a shadow after it was stored (see adoptLateInner). */
+internal interface LateShadow {
+    val recordId: String
+
+    /** Removes its own record and from now on only adds details to [outerId]. Op loop only. */
+    suspend fun becomeShadowOf(outerId: String)
 }

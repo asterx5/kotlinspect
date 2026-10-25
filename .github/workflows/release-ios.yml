@@ -1,0 +1,134 @@
+# Releases a version with its Swift package. Run it by hand (Actions > Release iOS > Run workflow)
+# after the version is on main and its CHANGELOG section is written, and only once the Swift
+# sample has been checked on a real iPhone. It:
+#   1. builds the XCFramework and zips it,
+#   2. points Package.swift at the zip (URL and checksum) and commits "Release <version>" to main,
+#   3. tags that commit v<version> and creates the GitHub release with the zip, notes and skill,
+#   4. checks that a scratch app can resolve and build the tagged package, else marks the release
+#      as a draft.
+# Publish the same tag to Maven Central afterwards, so both stay in lockstep.
+name: Release iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 1.0.0 (tag v1.0.0)"
+        required: true
+      confirm_device_tested:
+        description: "The Swift sample was checked on a real iPhone"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Device test gate
+        if: ${{ inputs.confirm_device_tested != true }}
+        run: |
+          echo "::error::Check the Swift sample on a real iPhone first, then run again with confirm_device_tested."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and zip the XCFramework
+        run: |
+          set -e
+          ./gradlew :kotlinspect-core:assembleKotlinspectCoreReleaseXCFramework --console=plain
+          cd kotlinspect-core/build/XCFrameworks/release
+          ditto -c -k --keepParent KotlinspectCore.xcframework KotlinspectCore.xcframework.zip
+          echo "ZIP=$PWD/KotlinspectCore.xcframework.zip" >> "$GITHUB_ENV"
+
+      - name: Point Package.swift at the release and commit
+        run: |
+          set -e
+          VERSION="${{ inputs.version }}"
+          TAG="v$VERSION"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then echo "::error::Tag $TAG already exists"; exit 1; fi
+          CHECKSUM=$(swift package compute-checksum "$ZIP")
+          URL="https://github.com/${{ github.repository }}/releases/download/$TAG/KotlinspectCore.xcframework.zip"
+          sed -i '' -E "s#url: \"[^\"]*\", // kotlinspect:url#url: \"$URL\", // kotlinspect:url#" Package.swift
+          sed -i '' -E "s#checksum: \"[^\"]*\" // kotlinspect:checksum#checksum: \"$CHECKSUM\" // kotlinspect:checksum#" Package.swift
+          grep -n "kotlinspect:url\|kotlinspect:checksum" Package.swift
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Release $VERSION"
+          git tag "$TAG"
+          git push origin main "$TAG"
+
+      - name: Release notes and skill archive
+        run: |
+          set -e
+          awk -v v="$VERSION" '$0 == "## " v { found = 1; next } /^## / { if (found) exit } found' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "::error::No CHANGELOG.md section for $VERSION"; exit 1; fi
+          {
+            echo
+            echo "### Install"
+            echo
+            echo '```kotlin'
+            echo "implementation(\"io.github.asterx5:kotlinspect:$VERSION\")        // with Compose UI"
+            echo "implementation(\"io.github.asterx5:kotlinspect-core:$VERSION\")   // no Compose (SwiftUI/UIKit iOS)"
+            echo "implementation(\"io.github.asterx5:kotlog:$VERSION\")              // Kotlog only, for modules that just log"
+            echo '```'
+            echo
+            echo "**Swift (pure iOS apps):** Xcode > File > Add Package Dependencies > \`https://github.com/${{ github.repository }}\`, version $VERSION."
+            echo
+            echo "**For AI agents:** download \`kotlinspect-skill.zip\` below and unzip it into your agent's skills folder (for Claude Code: \`~/.claude/skills/\`)."
+          } >> notes.md
+          (cd skills && zip -r ../kotlinspect-skill.zip kotlinspect)
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Kotlinspect ${{ env.VERSION }}
+          body_path: notes.md
+          files: |
+            kotlinspect-skill.zip
+            ${{ env.ZIP }}
+          make_latest: true
+
+      - name: Smoke test the tagged package
+        id: smoke
+        continue-on-error: true
+        run: |
+          set -e
+          mkdir -p /tmp/smoke/Sources/Smoke && cd /tmp/smoke
+          cat > Package.swift <<EOF
+          // swift-tools-version:5.9
+          import PackageDescription
+          let package = Package(
+              name: "Smoke",
+              platforms: [.iOS(.v14)],
+              dependencies: [.package(url: "https://github.com/${{ github.repository }}.git", exact: "$VERSION")],
+              targets: [.target(name: "Smoke", dependencies: [.product(name: "Kotlinspect", package: "kotlinspect")])]
+          )
+          EOF
+          echo 'import Kotlinspect' > Sources/Smoke/Smoke.swift
+          xcodebuild build -scheme Smoke -destination "generic/platform=iOS Simulator"
+
+      - name: Mark the release as a draft if the smoke test failed
+        if: steps.smoke.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit "$TAG" --draft --repo "${{ github.repository }}"
+          echo "::error::The tagged package did not build; the release is now a draft."
+          exit 1

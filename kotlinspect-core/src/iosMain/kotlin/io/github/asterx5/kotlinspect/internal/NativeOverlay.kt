@@ -28,6 +28,9 @@ import platform.UIKit.NSLayoutConstraint
 import platform.UIKit.NSTextAlignmentCenter
 import platform.UIKit.UIBezierPath
 import platform.UIKit.UIColor
+import platform.UIKit.UIAccessibilityIdentificationProtocol
+import platform.UIKit.accessibilityLabel
+import platform.UIKit.isAccessibilityElement
 import platform.UIKit.UIEvent
 import platform.UIKit.UIFont
 import platform.UIKit.UIFontWeightBold
@@ -45,6 +48,11 @@ import platform.UIKit.UIWindow
 import platform.UIKit.UIWindowScene
 import kotlin.math.PI
 import kotlin.math.abs
+
+/** Sets the identifier UI tests find views by. UIView conforms at runtime; the bindings don't say so. */
+internal fun UIView.setTestIdentifier(id: String) {
+    (this as? UIAccessibilityIdentificationProtocol)?.setAccessibilityIdentifier(id)
+}
 
 internal fun uiColor(argb: Long): UIColor = UIColor(
     red = ((argb shr 16) and 0xFF) / 255.0,
@@ -76,6 +84,10 @@ internal class BubbleView(private val onTap: () -> Unit, private val onDragEnd: 
 
     init {
         backgroundColor = UIColor.clearColor
+        // For UI tests (the Swift package's XCUITests look these up).
+        setTestIdentifier("kotlinspect.bubble")
+        isAccessibilityElement = true
+        accessibilityLabel = "Kotlinspect"
 
         disc.backgroundColor = uiColor(KsPalette.INK)
         disc.layer.cornerRadius = DISC / 2
@@ -218,6 +230,7 @@ internal class ToastView : UIView(frame = CGRectMake(0.0, 0.0, 0.0, 0.0)) {
         userInteractionEnabled = false
         alpha = 0.0
         hidden = true
+        setTestIdentifier("kotlinspect.toast")
 
         dot.layer.cornerRadius = 4.5
         dot.translatesAutoresizingMaskIntoConstraints = false

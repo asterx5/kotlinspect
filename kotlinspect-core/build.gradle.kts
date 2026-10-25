@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -40,8 +41,19 @@ kotlin {
         }
     }
 
-    iosArm64()
-    iosSimulatorArm64()
+    // The XCFramework for the Swift package: the same two iOS targets that are published, static,
+    // with Kotlog exported so Swift can reach it. Building it needs macOS (CI only); adding the
+    // binaries does not change the published klibs.
+    val xcf = XCFramework("KotlinspectCore")
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { target ->
+        target.binaries.framework {
+            baseName = "KotlinspectCore"
+            isStatic = true
+            binaryOption("bundleId", "io.github.asterx5.kotlinspect.core")
+            export(project(":kotlog"))
+            xcf.add(this)
+        }
+    }
 
     // jvmAndAndroidMain holds the OkHttp interceptor: code shared by the JVM and Android only.
     // Extending the default template keeps iosMain, appleMain and the rest as they were.

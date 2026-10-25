@@ -255,7 +255,88 @@ To never show the automatic bubble, only placed ones:
 Kotlinspect.configure { bubble { automatic = false } }
 ```
 
-## iOS without Compose (SwiftUI or UIKit)
+## iOS (Swift)
+
+Pure iOS apps, with no Kotlin at all, get Kotlinspect as a **Swift package**: automatic URLSession
+capture, an optional Alamofire adapter, and the same native inspector, bubble and toast. Under the
+hood it is the same engine KMP apps use (sessions, retention, redaction, HAR export), prebuilt.
+
+**Install:** Xcode > File > Add Package Dependencies > `https://github.com/asterx5/kotlinspect`,
+the same version as the Maven artifacts, product **Kotlinspect** (and **KotlinspectAlamofire** if
+you use Alamofire or Moya). Apps that only add Kotlinspect never download Alamofire.
+
+**Zero setup in Debug builds.** Nothing to call: the package starts itself when the app has
+finished launching, and records `URLSession.shared` and every session built from `.default` or
+`.ephemeral` configurations. Call `Kotlinspect.start` early to configure it:
+
+```swift
+import Kotlinspect
+
+@main
+struct MyApp: App {
+    init() {
+        var configuration = Configuration()
+        configuration.redactedHeaders = ["X-Api-Key"]
+        configuration.excludedHosts = ["pinned.example.com"]
+        Kotlinspect.start(configuration)
+    }
+    var body: some Scene { WindowGroup { ContentView() } }
+}
+```
+
+If the bubble doesn't appear with no code at all (for example when your linker settings strip
+unused code), that one `Kotlinspect.start()` line is all that's needed.
+
+**Alamofire and Moya:**
+
+```swift
+import KotlinspectAlamofire
+
+let session = KotlinspectAlamofire.session()              // your configuration, interceptor and monitors can be passed in
+let provider = MoyaProvider<API>(session: KotlinspectAlamofire.session())
+```
+
+Each call is recorded once, with Alamofire's own view of it. (Adding only
+`KotlinspectAlamofire.eventMonitor` to an existing session also works.)
+
+**Sessions, export and logs:**
+
+```swift
+let checkout = Kotlinspect.startSession("Checkout", tags: ["cart"])
+var request = URLRequest(url: url)
+request.kotlinspectSession(checkout)                       // record this request in that session
+
+let file = try await Kotlinspect.exportHAR()               // HAR 1.2 of the active session
+
+Kotlog.d("Feed", "Loaded \(items.count) items", layer: "datasource")
+Kotlog.e("Feed", "Request failed", layer: "repository", error: error)
+
+for await count in Kotlinspect.callCount() { print(count) } // also inFlightCount, latestCall, sessions
+```
+
+**UI:** the bubble shows over the app automatically. Set
+`configuration.showOverlayAutomatically = false` and use `.kotlinspectOverlay()` on a SwiftUI view
+to place it yourself, or embed `KotlinspectInspectorView()` in a debug screen.
+`Kotlinspect.openInspector()` opens it from anywhere.
+
+**Release builds:** Kotlinspect does nothing in Release: no capture, no database, no bubble. To
+use it in a release build, call `Kotlinspect.start(Configuration(enabled: true))` with
+`allowInRelease = true`; capture then starts at that call, so requests made before it are not
+recorded.
+
+**Limitations of the automatic capture:** requests are re-issued on Kotlinspect's own session,
+which doesn't inherit your session's configuration (custom URLCache, cookie storage, timeouts,
+`waitsForConnectivity`). Certificate pinning done in your session delegate is forwarded through the
+authentication challenge; if a pinned host misbehaves, add it to `excludedHosts` or use the
+Alamofire adapter, which observes without re-issuing. Not captured: background sessions,
+WebSocket and stream tasks, `file:` and `data:` URLs, and sessions whose configuration was built
+without `.default` or `.ephemeral`.
+
+**Kotlin Multiplatform apps must not add this package.** They already get Kotlinspect through
+Gradle; the package would add a second Kotlin runtime and a second Kotlinspect. See the next
+section for SwiftUI and UIKit in KMP apps.
+
+## iOS without Compose in KMP apps (SwiftUI or UIKit)
 
 Use `kotlinspect-core`: the bubble, toast and inspector are native UIKit, so no Compose is
 linked into your app. Swift can only see Kotlin classes your framework exports, so export it once
@@ -281,20 +362,11 @@ kotlin {
 
 Without any Swift code the bubble already appears automatically. To place it yourself:
 
-**SwiftUI**: add the Swift package from this repository
-(`https://github.com/asterx5/kotlinspect`, product `KotlinspectSwiftUI`), then:
+**SwiftUI** (through your own shared framework; KMP apps don't use the Swift package):
 
 ```swift
-import KotlinspectSwiftUI
+import Shared   // your framework
 
-ContentView()
-    .overlay(KotlinspectOverlay())               // current session
-    // .overlay(KotlinspectOverlay(sessionId: id)) // only one session
-```
-
-Or, without the package, wrap the view yourself:
-
-```swift
 struct KotlinspectOverlay: UIViewRepresentable {
     var sessionId: String? = nil
     func makeUIView(context: Context) -> UIView {
@@ -302,6 +374,10 @@ struct KotlinspectOverlay: UIViewRepresentable {
     }
     func updateUIView(_ uiView: UIView, context: Context) {}
 }
+
+ContentView()
+    .overlay(KotlinspectOverlay())               // current session
+    // .overlay(KotlinspectOverlay(sessionId: id)) // only one session
 ```
 
 **UIKit**:
@@ -423,7 +499,8 @@ Use `enabled = false` as a master switch in any build.
 - `kotlinspect-core/`: capture, storage, sessions, the public API and the native iOS UI.
 - `kotlinspect/`: the Compose UI on top of core.
 - `kotlog/`: the `Kotlog` logging API, with no dependencies.
-- `Package.swift`, `swift/`: the optional `KotlinspectSwiftUI` Swift package.
+- `Package.swift`, `swift/`: the Swift package for pure iOS apps (`Kotlinspect`, `KotlinspectAlamofire`).
+- `samples/swift-ios/`: the SwiftUI sample for the Swift package (XcodeGen project).
 - `shared/`, `androidApp/`, `desktopApp/`, `iosApp/`: a sample app with a playground and a Postman-style request builder. It consumes the library from Maven Local, the same way other apps do.
 
 ```bash

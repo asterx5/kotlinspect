@@ -36,8 +36,14 @@ import kotlin.experimental.ExperimentalNativeApi
 internal actual object Platform {
     actual val isReady: Boolean = true
 
+    /**
+     * Set by the Swift package from the app's own `#if DEBUG`, since its prebuilt framework is
+     * always a release binary. KMP apps never set it and keep using their framework's build type.
+     */
+    var hostBuildIsDebug: Boolean? = null
+
     actual val isDebugBuild: Boolean
-        get() = kotlin.native.Platform.isDebugBinary
+        get() = hostBuildIsDebug ?: kotlin.native.Platform.isDebugBinary
 
     actual fun onRuntimeStarted(host: KotlinspectHost) {
         dispatch_async(dispatch_get_main_queue()) { IosUi.updateAutomaticOverlay(host) }
