@@ -311,16 +311,17 @@ internal class KotlinspectRuntime(
     }
 
     /**
-     * Adds a shadow capture's details to its outer record without overwriting anything the outer
-     * record already has. Must run on the op loop.
+     * Fills a record's empty fields from [extras] without overwriting anything it already has:
+     * a shadow capture's details for its outer record, or timings measured after a record ended.
+     * Must run on the op loop.
      */
-    suspend fun mergeIntoOuter(outerId: String, extras: CaptureExtras) {
-        if (outerId in outerKeys) {
+    suspend fun fillRecord(recordId: String, extras: CaptureExtras) {
+        if (recordId in outerKeys) {
             // Still in flight: keep the details so the outer source's later snapshots retain them.
-            mergedExtras[outerId] = mergedExtras[outerId]?.fillFrom(extras) ?: extras
+            mergedExtras[recordId] = mergedExtras[recordId]?.fillFrom(extras) ?: extras
         }
         val records = database.records()
-        val current = records.get(outerId) ?: return
+        val current = records.get(recordId) ?: return
         records.upsert(current.fillFrom(extras))
     }
 

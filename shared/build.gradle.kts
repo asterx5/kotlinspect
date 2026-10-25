@@ -19,6 +19,17 @@ kotlin {
     }
     
     jvm()
+
+    // jvmAndAndroidMain: the Retrofit demo, on Android and desktop only.
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
+    applyDefaultHierarchyTemplate {
+        common {
+            group("jvmAndAndroid") {
+                withJvm()
+                withCompilations { it.target.platformType == org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType.androidJvm }
+            }
+        }
+    }
     
     android {
        namespace = "io.github.asterx5.kotlinspect.shared"
@@ -42,6 +53,10 @@ kotlin {
     }
     
     sourceSets {
+        getByName("jvmAndAndroidMain").dependencies {
+            implementation(libs.retrofit)
+            implementation(libs.retrofit.scalars)
+        }
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)

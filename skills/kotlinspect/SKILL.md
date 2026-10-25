@@ -17,9 +17,9 @@ most of the work is choosing the right artifact and putting the dependency in th
 
 Find out:
 
-- **Where `HttpClient` is created.** Kotlinspect only captures Ktor. If the app uses Retrofit or
-  OkHttp directly with no Ktor client, tell the user it is Ktor-only today and stop; don't swap
-  their networking stack.
+- **Where the HTTP client is created.** Kotlinspect captures Ktor (`HttpClient`) everywhere, and
+  OkHttp (so Retrofit too) on Android and desktop. Don't swap the app's networking stack; use the
+  matching setup in step 4.
 - **Which module owns it.** Usually the shared KMP module (`shared/`, `composeApp/`, `core/network`).
   The dependency goes in that module's `commonMain`, not in the Android app module.
 - **What UI the apps use.** Look for Compose Multiplatform or Jetpack Compose (`org.jetbrains.compose`
@@ -81,7 +81,21 @@ val client = HttpClient(engine) {
 ```
 
 If the app builds several clients (for example one per API), install it in each one that should
-be inspected. That is the whole setup: on Android the library's manifest captures the app context
+be inspected.
+
+For OkHttp or Retrofit (Android, desktop), add the interceptor where the `OkHttpClient` is built.
+It ships in the same dependency; don't add OkHttp for it.
+
+```kotlin
+import io.github.asterx5.kotlinspect.okhttp.kotlinspect
+
+val client = OkHttpClient.Builder()
+    .kotlinspect()                       // an application interceptor; not addNetworkInterceptor
+    // .eventListenerFactory(KotlinspectEventListenerFactory(existingFactory))  // optional: DNS/connect/TLS timings
+    .build()
+```
+
+Calls through Ktor's OkHttp engine on a client that also has the interceptor are recorded once. That is the whole setup: on Android the library's manifest captures the app context
 by itself, and the bubble appears automatically on Android, iOS and desktop. There is no
 `init` call to add.
 

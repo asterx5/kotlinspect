@@ -82,6 +82,7 @@ fun App() {
         var overlayMode by remember { mutableStateOf(0) }
         var scopedSession by remember { mutableStateOf<String?>(null) }
         val onStatus: (String) -> Unit = { status = it }
+        val retrofit = remember { retrofitDemo() }
 
         Box(Modifier.fillMaxSize()) {
         Column(
@@ -97,9 +98,14 @@ fun App() {
             PrimaryTabRow(selectedTabIndex = screen) {
                 Tab(selected = screen == 0, onClick = { screen = 0 }, text = { Text("Playground") })
                 Tab(selected = screen == 1, onClick = { screen = 1 }, text = { Text("Request builder") })
+                if (retrofit != null) Tab(selected = screen == 2, onClick = { screen = 2 }, text = { Text("Retrofit") })
             }
             if (screen == 1) {
                 RequestBuilderScreen(client)
+                return@Column
+            }
+            if (screen == 2 && retrofit != null) {
+                RetrofitScreen(retrofit)
                 return@Column
             }
             Text(status, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
@@ -243,5 +249,33 @@ private fun Section(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { content() }
+    }
+}
+
+/** Retrofit calls on an OkHttp client with KotlinspectInterceptor (Android and desktop). */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun RetrofitScreen(demo: RetrofitDemo) {
+    val scope = rememberCoroutineScope()
+    var status by remember { mutableStateOf("These calls go through Retrofit and OkHttp, recorded by KotlinspectInterceptor.") }
+    fun run(label: String, call: suspend () -> String) {
+        status = "$label…"
+        Kotlog.d("Retrofit", "Starting $label")
+        scope.launch {
+            status = try {
+                "$label: ${call()}"
+            } catch (e: Throwable) {
+                "$label: ${e::class.simpleName}"
+            }
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(status, style = MaterialTheme.typography.bodySmall, fontFamily = FontFamily.Monospace)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { run("GET JSON") { demo.getJson() } }) { Text("GET JSON") }
+            Button(onClick = { run("POST JSON") { demo.postJson() } }) { Text("POST JSON") }
+            Button(onClick = { run("404") { demo.notFound() } }) { Text("404") }
+            Button(onClick = { run("Timeout") { demo.timeout() } }) { Text("Timeout (2s)") }
+        }
     }
 }

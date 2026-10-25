@@ -61,3 +61,43 @@ version `1.0.0-SNAPSHOT` so local publishing never overwrites a released version
 - `RecordEntity` and `RecordSummary` gained fields. They are `@InternalKotlinspectApi` in the `internal` package, which the ABI dumps exclude; `RecordSummary`'s new fields have defaults so existing code that builds it keeps compiling.
 
 **Acceptance:** 93 tests green, including 8 ingestion, 6 nested-capture, 1 v2→v3 migration and 4 UI-model tests; existing tests unedited. ABI diff: only the `@ExperimentalKotlinspectApi` ingestion types and `dedupeNestedCaptures`. Maven Local diff: none. The ingestion tests run on the JVM; running them on an iOS simulator needs the macOS CI of Phase 4.
+
+### Phase 1: OkHttp
+
+- **Placement:** the preferred option worked. The code lives in kotlinspect-core in a
+  `jvmAndAndroidMain` source set (package `io.github.asterx5.kotlinspect.okhttp`), created by
+  extending the default hierarchy template, so `iosMain`/`appleMain` are untouched. No new
+  artifact, so no extra Maven Central files.
+- **Dependencies:** `compileOnly(com.squareup.okhttp3:okhttp:4.9.0)` only. The Maven Local diff is
+  empty: OkHttp appears in no POM or Gradle module file. Retrofit is not a dependency (the Retrofit
+  method-name idea was not kept); Retrofit calls are captured because they run on OkHttp.
+- **API:** `KotlinspectInterceptor(sessionId)` with `@JvmOverloads` (Java: `new
+  KotlinspectInterceptor()`, `new KotlinspectInterceptor("checkout")`),
+  `OkHttpClient.Builder.kotlinspect(sessionId)`, `Request.Builder.kotlinspectSession(id)`, and the
+  optional `KotlinspectEventListenerFactory(delegate)` (1.4). Stable API, not experimental.
+  `sessionId` accepts an id or a name, like the Ktor plugin.
+- **Read-ahead:** response bodies with `peekBody(maxBodyBytes)`; the size is the declared length,
+  or the read length when the body ended within the limit, else unknown. `gzip` that the app asked
+  for is decoded from the peeked bytes (a body cut by the limit decodes partially); a complete body
+  that fails to decode is "Not captured: gzip"; other encodings are "Not captured: encoding <name>".
+- **Timings:** without the listener, wait = `receivedResponseAtMillis - sentRequestAtMillis`. The
+  listener stores phase timestamps per `Call` in a weak map. Receive usually ends after the
+  interceptor returns (when the app reads the body), so it is added to the stored record later
+  through `IngestCapture.addLateTimings` and `KotlinspectRuntime.fillRecord`. The body is read
+  ahead before the timing snapshot, since reading a small body to its end is itself a timing event.
+- **Deviation:** OkHttp allows one event listener factory, so ours wraps the app's. Only callbacks
+  that exist in OkHttp 4.9 (the compile floor) can be forwarded; newer ones (5.x adds a few) do not
+  reach the delegate. Documented in the KDoc and README.
+- **R8:** kotlinspect-core now publishes consumer rules (`-dontwarn okhttp3.**`, `-dontwarn okio.**`).
+  A scratch app with no OkHttp built a minified release both with and without them (R8 drops the
+  unreachable classes), so they are a safety net for apps whose own rules keep Kotlinspect's
+  classes, which would make the OkHttp references reachable.
+- **Tests:** `OkHttpInterceptorTest` (15, MockWebServer, JVM) covers the 1.7 list except the two
+  Retrofit-name cases. The version matrix runs with `-PokhttpTestVersion=4.9.3`, `4.12.1` (default)
+  and `5.5.1`; the build forces that version onto the test classpath, because Ktor's OkHttp engine
+  would otherwise pull 4.12 into the 4.9 run. All 15 pass on all three, including Ktor 3.0's
+  engine on 4.9.3.
+- **Sample:** a Retrofit tab (Android and desktop) with GET, POST, 404 and a 2-second timeout,
+  through Retrofit 3.0 on an OkHttp client with the interceptor and the listener. Checked on the
+  Android emulator: the calls appear with an OkHttp badge next to a Ktor call, and the detail
+  shows Blocked/DNS/Connect/TLS/Send/Wait/Receive, protocol h2 and the server address.

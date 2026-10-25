@@ -27,6 +27,18 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
+    // jvmAndAndroidMain holds the OkHttp interceptor: code shared by the JVM and Android only.
+    // Extending the default template keeps iosMain, appleMain and the rest as they were.
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
+    applyDefaultHierarchyTemplate {
+        common {
+            group("jvmAndAndroid") {
+                withJvm()
+                withCompilations { it.target.platformType == org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType.androidJvm }
+            }
+        }
+    }
+
     jvm()
 
     android {
@@ -38,6 +50,11 @@ kotlin {
             jvmTarget = JvmTarget.JVM_11
         }
         withHostTest {}
+
+        optimization {
+            consumerKeepRules.publish = true
+            consumerKeepRules.file("consumer-rules.pro")
+        }
     }
 
     // Built with the current compiler, but readable by apps on Kotlin 2.1.20 and newer, and
@@ -61,6 +78,11 @@ kotlin {
             implementation(libs.ks.serialization.json)
             implementation(libs.ks.room.runtime)
         }
+        // OkHttp is the app's own dependency: compileOnly keeps it out of the published POM and
+        // module metadata, so apps without OkHttp never download it.
+        getByName("jvmAndAndroidMain").dependencies {
+            compileOnly(libs.ks.okhttp)
+        }
         androidMain.dependencies {
             implementation(libs.ks.sqlite.framework)
         }
@@ -77,12 +99,24 @@ kotlin {
         }
         jvmTest.dependencies {
             implementation(libs.ks.sqlite.bundled)
+            // -PokhttpTestVersion=4.9.3 / 4.12.1 / 5.5.1 runs the OkHttp tests against each line.
+            val okhttpTestVersion = providers.gradleProperty("okhttpTestVersion").getOrElse("4.12.1")
+            implementation("com.squareup.okhttp3:okhttp:$okhttpTestVersion")
+            implementation("com.squareup.okhttp3:mockwebserver:$okhttpTestVersion")
+            implementation(libs.ks.ktor.client.okhttp)
         }
     }
 }
 
 room {
     schemaDirectory("$projectDir/schemas")
+}
+
+// The OkHttp tests run against the version picked with -PokhttpTestVersion, even where another
+// test dependency (Ktor's OkHttp engine) asks for a newer one.
+val okhttpTestVersion = providers.gradleProperty("okhttpTestVersion").getOrElse("4.12.1")
+configurations.matching { it.name.startsWith("jvmTest") }.configureEach {
+    resolutionStrategy.force("com.squareup.okhttp3:okhttp:$okhttpTestVersion", "com.squareup.okhttp3:mockwebserver:$okhttpTestVersion")
 }
 
 dependencies {

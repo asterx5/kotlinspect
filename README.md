@@ -20,7 +20,7 @@
 
 Latest: **1.0.0-beta12**. See the [changelog](CHANGELOG.md).
 
-A network inspector for Kotlin Multiplatform apps that use Ktor. Add one dependency and every HTTP call shows up in a floating bubble, a toast, and a full inspector screen on **Android, iOS and Desktop**. It is off in release builds by default.
+A network inspector for Kotlin Multiplatform apps that use Ktor (and OkHttp or Retrofit on Android and desktop). Add one dependency and every HTTP call shows up in a floating bubble, a toast, and a full inspector screen on **Android, iOS and Desktop**. It is off in release builds by default.
 
 - **Capture**: method, URL, headers, bodies, status, timing and failures, including in-flight and cancelled calls. Large bodies are truncated, binary bodies are skipped, and streaming responses are passed through untouched.
 - **Redaction**: `Authorization`, `Proxy-Authorization`, `Cookie` and `Set-Cookie` are hidden by default. You can redact more headers, query parameters or body content.
@@ -88,6 +88,49 @@ val client = HttpClient {
 ```
 
 That's all. On Android, the library's manifest picks up the app context automatically. On iOS and desktop, the bubble appears with the first call.
+
+## OkHttp & Retrofit
+
+On Android and desktop, Kotlinspect also records calls made with OkHttp, and so with Retrofit,
+Coil, or anything else built on an `OkHttpClient`. It's in the same dependency; OkHttp itself is
+not added to your app, so apps without OkHttp download nothing extra. OkHttp 4.9 or newer works,
+including 5.x.
+
+```kotlin
+import io.github.asterx5.kotlinspect.okhttp.kotlinspect
+
+val client = OkHttpClient.Builder()
+    .kotlinspect()                       // same as .addInterceptor(KotlinspectInterceptor())
+    .build()
+
+val retrofit = Retrofit.Builder()
+    .baseUrl("https://api.example.com/")
+    .client(client)
+    .build()
+```
+
+- Add it with `addInterceptor` (an *application* interceptor), not `addNetworkInterceptor`: network
+  interceptors see compressed bodies and one call per redirect. It still works there, and logs one
+  Kotlog warning suggesting the change.
+- Sessions work like Ktor's: `.kotlinspect("payments")` pins a whole client to a session, and
+  `Request.Builder().kotlinspectSession("checkout")` routes one request (it wins over the client's).
+- Response bodies are read ahead with `peekBody`, up to `maxBodyBytes`, before your code reads
+  them, as other inspectors do. Your app still gets the complete response. Event streams
+  (`text/event-stream`, NDJSON) are never read ahead, and one-shot or duplex request bodies are
+  never read.
+- For DNS, connect, TLS, send, wait and receive times, also install the event listener factory
+  (OkHttp allows one; pass yours in and it is still called):
+
+  ```kotlin
+  OkHttpClient.Builder()
+      .kotlinspect()
+      .eventListenerFactory(KotlinspectEventListenerFactory(yourFactory))   // or KotlinspectEventListenerFactory()
+  ```
+
+  Callbacks OkHttp added after 4.9 are not forwarded to your factory.
+- Using Ktor's OkHttp engine on a client that also has the interceptor? The call is recorded once,
+  as a Ktor call, with OkHttp's details (timings, server address) added to it.
+- In release builds the interceptor and the listener do nothing.
 
 ## Logging with Kotlog
 

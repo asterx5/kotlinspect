@@ -124,7 +124,29 @@ internal class IngestCapture private constructor(
 
     private suspend fun mergeShadow() {
         val outer = shadowOf ?: return
-        runtime.mergeIntoOuter(outer, extras)
+        runtime.fillRecord(outer, extras)
+    }
+
+    /**
+     * Adds timings that became known after the record ended, such as OkHttp's receive time once
+     * the app has read the body. Only empty timing fields are filled.
+     */
+    fun addLateTimings(timings: CapturedTimings) {
+        guard {
+            runtime.enqueue {
+                val target = record?.id ?: shadowOf ?: return@enqueue
+                val late = CaptureExtras(
+                    timingBlocked = timings.blocked?.nonNegative(),
+                    timingDns = timings.dns?.nonNegative(),
+                    timingConnect = timings.connect?.nonNegative(),
+                    timingSsl = timings.ssl?.nonNegative(),
+                    timingSend = timings.send?.nonNegative(),
+                    timingWait = timings.wait?.nonNegative(),
+                    timingReceive = timings.receive?.nonNegative(),
+                )
+                runtime.fillRecord(target, late)
+            }
+        }
     }
 
     private fun addExtras(timings: CapturedTimings?, serverIpAddress: String?) {

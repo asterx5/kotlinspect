@@ -23,6 +23,7 @@ All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 - A request seen by two capture sources (Ktor on an OkHttp client with the Kotlinspect interceptor, Alamofire over the automatic URLSession capture) is stored once. `dedupeNestedCaptures = false` turns this off.
 - The inspector (Compose and native iOS) shows an operation name as the call title when a source provides one, a small source badge when a session mixes sources, the source, protocol and server address in the details, and DNS, connect and TLS time when a source measures them.
 - Database version 3; the migration keeps every call, session and log.
+- **OkHttp and Retrofit** on Android and desktop: `OkHttpClient.Builder().kotlinspect()` (or `KotlinspectInterceptor`) records every call on that client, in the same dependency and without adding OkHttp to apps that don't use it. Works with OkHttp 4.9 and newer, including 5.x. Per-client and per-request sessions, `peekBody` read-ahead up to `maxBodyBytes`, gzip bodies decoded, event streams and one-shot or duplex bodies left untouched. Optional `KotlinspectEventListenerFactory` adds DNS, connect, TLS, send, wait and receive times.
 
 ## 1.0.0-beta12
 
