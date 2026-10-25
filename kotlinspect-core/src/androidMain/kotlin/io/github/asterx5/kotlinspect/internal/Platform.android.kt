@@ -8,12 +8,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.database.Cursor
 import android.net.Uri
-import androidx.room.Room
-import androidx.room.RoomDatabase
-import androidx.sqlite.SQLiteDriver
-import androidx.sqlite.driver.AndroidSQLiteDriver
 import io.github.asterx5.kotlinspect.InternalKotlinspectApi
-import io.github.asterx5.kotlinspect.internal.db.KotlinspectDatabase
 import java.util.ServiceLoader
 
 internal actual object Platform {
@@ -44,17 +39,6 @@ internal actual object Platform {
         KotlinspectAndroid.application = context.applicationContext as? Application
         providers.forEach { runCatching { it.install() } }
     }
-
-    actual fun databaseBuilder(inMemory: Boolean, config: ResolvedConfig): RoomDatabase.Builder<KotlinspectDatabase> {
-        val context = requireNotNull(appContext)
-        return if (inMemory) {
-            Room.inMemoryDatabaseBuilder<KotlinspectDatabase>(context)
-        } else {
-            Room.databaseBuilder<KotlinspectDatabase>(context, context.getDatabasePath(KotlinspectDatabase.FILE_NAME).absolutePath)
-        }
-    }
-
-    actual fun sqliteDriver(): SQLiteDriver = AndroidSQLiteDriver()
 
     actual fun onRuntimeStarted(host: KotlinspectHost) {
         providers.forEach { runCatching { it.onStarted(host) } }

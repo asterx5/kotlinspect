@@ -4,7 +4,7 @@ import io.github.asterx5.kotlinspect.internal.KotlinspectHost
 import io.github.asterx5.kotlinspect.internal.KotlinspectRuntime
 import io.github.asterx5.kotlinspect.internal.Platform
 import io.github.asterx5.kotlinspect.internal.ResolvedConfig
-import io.github.asterx5.kotlinspect.internal.createDatabase
+import io.github.asterx5.kotlinspect.internal.createStore
 import io.github.asterx5.kotlinspect.internal.har.HarExporter
 import io.github.asterx5.kotlinspect.internal.har.HarSelection
 import io.github.asterx5.kotlinspect.internal.toCall
@@ -210,7 +210,7 @@ public object Kotlinspect {
         runtimeRef.load()?.let { return if (it.config.enabled) it else null }
         if (!isEnabled) return null
         val config = ResolvedConfig.from(builder)
-        val created = KotlinspectRuntime(config, databaseFactory = { Platform.createDatabase(config) })
+        val created = KotlinspectRuntime(config, databaseFactory = { createStore(config) })
         return if (runtimeRef.compareAndSet(null, created)) {
             created.start()
             Platform.onRuntimeStarted(hostFor(created))

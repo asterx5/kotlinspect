@@ -46,11 +46,15 @@ kotlin {
     // jvmAndAndroidMain holds the OkHttp interceptor: code shared by the JVM and Android only.
     // Extending the default template keeps iosMain, appleMain and the rest as they were.
     @OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
+    // persistentMain holds the Room database: every platform with storage (all but web).
     applyDefaultHierarchyTemplate {
         common {
-            group("jvmAndAndroid") {
-                withJvm()
-                withCompilations { it.target.platformType == org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType.androidJvm }
+            group("persistent") {
+                group("jvmAndAndroid") {
+                    withJvm()
+                    withCompilations { it.target.platformType == org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType.androidJvm }
+                }
+                group("ios") { withIos() }
             }
         }
     }

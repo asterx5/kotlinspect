@@ -8,7 +8,7 @@ import io.github.asterx5.kotlinspect.SessionPolicy
 import io.github.asterx5.kotlinspect.ToastFilter
 import io.github.asterx5.kotlinspect.internal.capture.Redaction
 import io.github.asterx5.kotlinspect.internal.db.KeyValueEntity
-import io.github.asterx5.kotlinspect.internal.db.KotlinspectDatabase
+import io.github.asterx5.kotlinspect.internal.db.KotlinspectStore
 import io.github.asterx5.kotlinspect.internal.db.LogEntity
 import io.github.asterx5.kotlog.KotlogEntry
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
@@ -110,7 +110,7 @@ internal interface RecordSource {
 
 internal class KotlinspectRuntime(
     config: ResolvedConfig,
-    private val databaseFactory: () -> KotlinspectDatabase,
+    private val databaseFactory: () -> KotlinspectStore,
     val clock: () -> Long = ::getTimeMillis,
     context: CoroutineContext = Dispatchers.Default,
     private val retentionDelayMillis: Long = 1_500,
@@ -119,7 +119,7 @@ internal class KotlinspectRuntime(
     var config: ResolvedConfig = config
 
     val scope: CoroutineScope = CoroutineScope(SupervisorJob() + context)
-    val database: KotlinspectDatabase by lazy(databaseFactory)
+    val database: KotlinspectStore by lazy(databaseFactory)
 
     private val ops = Channel<suspend () -> Unit>(Channel.UNLIMITED)
     private val _currentSessionId = MutableStateFlow<String?>(null)
