@@ -213,7 +213,7 @@ internal class HttpCapture private constructor(
             val record = RecordEntity(
                 id = KotlinspectRuntime.newRecordId(),
                 sessionId = "",
-                source = RecordSources.HTTP,
+                source = RecordSources.KTOR,
                 kind = RecordSources.KIND_HTTP_CALL,
                 state = CallState.Pending.name,
                 startedAt = runtime.clock(),

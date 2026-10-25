@@ -127,6 +127,14 @@ public class KotlinspectConfigBuilder internal constructor() {
     /** Desktop only: folder name under `~/.kotlinspect` holding this app's database. */
     public var desktopAppName: String? = null
 
+    /**
+     * Stores a request once when two capture sources see it: Ktor running on an OkHttp client that
+     * also has the Kotlinspect interceptor, or Alamofire requests that also pass through the
+     * automatic URLSession capture. The outer capture keeps the record and gains the inner one's
+     * extra details (protocol, server address, timings).
+     */
+    public var dedupeNestedCaptures: Boolean = true
+
     internal val redactedHeaders: MutableSet<String> =
         mutableSetOf("Authorization", "Proxy-Authorization", "Cookie", "Set-Cookie")
     internal val redactedQueryParameters: MutableSet<String> = mutableSetOf()

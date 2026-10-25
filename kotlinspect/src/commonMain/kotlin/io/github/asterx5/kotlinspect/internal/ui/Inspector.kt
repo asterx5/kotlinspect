@@ -56,7 +56,12 @@ import androidx.compose.ui.unit.dp
 import io.github.asterx5.kotlinspect.CallState
 import io.github.asterx5.kotlinspect.internal.Codecs
 import io.github.asterx5.kotlinspect.internal.KotlinspectHost
+import io.github.asterx5.kotlinspect.internal.uimodel.KsPalette
 import io.github.asterx5.kotlinspect.internal.uimodel.StatusFilter
+import io.github.asterx5.kotlinspect.internal.uimodel.hasMixedSources
+import io.github.asterx5.kotlinspect.internal.uimodel.sourceLabel
+import io.github.asterx5.kotlinspect.internal.uimodel.timingPhases
+import io.github.asterx5.kotlinspect.internal.uimodel.title
 import io.github.asterx5.kotlinspect.internal.uimodel.filterRecords
 import io.github.asterx5.kotlinspect.internal.uimodel.looksLikeJsonLines
 import io.github.asterx5.kotlinspect.internal.uimodel.orderMethods
@@ -190,6 +195,7 @@ private fun CallListScreen(
     val methodCounts = remember(records) { records.groupingBy { it.method.uppercase() }.eachCount() }
     val methods = remember(methodCounts) { orderMethods(methodCounts.keys) }
     val maxDuration = remember(records) { records.maxOfOrNull { it.durationMs ?: 0 } ?: 0 }
+    val showSource = remember(records) { hasMixedSources(records) }
     val logCount by remember(sessionId) { sessionId?.let { host.logCount(it) } ?: flowOf(0) }.collectAsState(0)
 
     Box(Modifier.fillMaxSize()) {
@@ -259,7 +265,7 @@ private fun CallListScreen(
             } else {
                 LazyColumn(Modifier.fillMaxSize(), state = scroll, contentPadding = PaddingValues(bottom = 32.dp)) {
                     items(filtered, key = { it.id }, contentType = { "call" }) { record ->
-                        CallRow(record, maxDuration) { onOpen(record.id) }
+                        CallRow(record, maxDuration, showSource) { onOpen(record.id) }
                     }
                 }
             }
@@ -313,21 +319,30 @@ private fun EmptyState(title: String, hint: String) {
 }
 
 @Composable
-private fun CallRow(record: RecordSummary, maxDuration: Long, onClick: () -> Unit) {
+private fun CallRow(record: RecordSummary, maxDuration: Long, showSource: Boolean, onClick: () -> Unit) {
     val c = Ks.colors
     val state = record.callState
     val color = c.statusColor(state, record.statusCode)
-    val subtitle = remember(record.host, record.startedAt, record.responseBodySize) {
-        listOfNotNull(record.host, formatTime(record.startedAt), record.responseBodySize?.let(::formatBytes)).joinToString("  ·  ")
+    val named = record.operationName?.isNotBlank() == true
+    val subtitle = remember(record.host, record.path, named, record.startedAt, record.responseBodySize) {
+        // With an operation name as the title, the path moves to the second line.
+        listOfNotNull(if (named) record.path else record.host, formatTime(record.startedAt), record.responseBodySize?.let(::formatBytes))
+            .joinToString("  ·  ")
     }
     Column(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 11.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             MethodBadge(record.method)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                KsText(record.path, Ks.type.mono, maxLines = 1)
+                KsText(record.title, if (named) Ks.type.bodyStrong else Ks.type.mono, maxLines = 1)
                 Spacer(Modifier.height(2.dp))
-                KsText(subtitle, Ks.type.caption, maxLines = 1)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (showSource) {
+                        Tag(sourceLabel(record.source), c.textMuted)
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    KsText(subtitle, Ks.type.caption, maxLines = 1)
+                }
             }
             Spacer(Modifier.width(10.dp))
             Column(horizontalAlignment = Alignment.End) {
@@ -552,6 +567,10 @@ private fun Hero(r: RecordEntity) {
             Spacer(Modifier.width(8.dp))
             KsText(r.host, Ks.type.caption, maxLines = 1, modifier = Modifier.weight(1f))
         }
+        r.operationName?.takeIf { it.isNotBlank() }?.let {
+            Spacer(Modifier.height(8.dp))
+            KsText(it, Ks.type.title, maxLines = 2)
+        }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.Bottom) {
             KsText(
@@ -623,17 +642,10 @@ private fun UrlBlock(r: RecordEntity, copy: (String, String) -> Unit) {
 @Composable
 private fun TimingCard(r: RecordEntity) {
     val c = Ks.colors
-    val sentAt = r.requestSentAt
-    val responseAt = r.responseStartedAt
-    val completedAt = r.completedAt
-    val send = sentAt?.let { it - r.startedAt }?.coerceAtLeast(0)
-    val wait = if (sentAt != null && responseAt != null) (responseAt - sentAt).coerceAtLeast(0) else null
-    val receive = if (responseAt != null && completedAt != null) (completedAt - responseAt).coerceAtLeast(0) else null
-    val phases = listOfNotNull(
-        send?.let { Triple("Send", it, c.redirect) },
-        wait?.let { Triple("Wait", it, c.warn) },
-        receive?.let { Triple("Receive", it, c.ok) },
-    )
+    val palette = KsPalette.of(c.isDark)
+    val phases = remember(r, c) {
+        timingPhases(r).map { Triple(it.kind.label, it.millis, Color(palette.phaseColor(it.kind))) }
+    }
     SectionLabel("Timing · ${formatDuration(r.durationMs)}")
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.surface).padding(12.dp)) {
         val total = phases.sumOf { it.second }.coerceAtLeast(1)
@@ -664,11 +676,12 @@ private fun Facts(r: RecordEntity) {
     KeyValueTable(
         listOf(
             "Started" to formatTimestamp(r.startedAt),
+            "Source" to sourceLabel(r.source),
             "Protocol" to (r.protocol ?: "—"),
             "Request" to formatBytes(r.requestBodySize),
             "Response" to formatBytes(r.responseBodySize),
             "Endpoint" to (r.endpointKey ?: "—"),
-        ),
+        ) + listOfNotNull(r.serverIpAddress?.let { "Server" to it }),
     )
 }
 

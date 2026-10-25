@@ -88,6 +88,17 @@ public class KsPalette(
         else -> textMuted
     }
 
+    /** Color of a timing phase; send, wait and receive keep the colors they always had. */
+    public fun phaseColor(kind: TimingPhaseKind): Long = when (kind) {
+        TimingPhaseKind.Blocked -> pending
+        TimingPhaseKind.Dns -> codeKey
+        TimingPhaseKind.Connect -> codeNumber
+        TimingPhaseKind.Ssl -> codeLiteral
+        TimingPhaseKind.Send -> redirect
+        TimingPhaseKind.Wait -> warn
+        TimingPhaseKind.Receive -> ok
+    }
+
     public fun tokenColor(kind: JsonTokenKind): Long = when (kind) {
         JsonTokenKind.Key -> codeKey
         JsonTokenKind.StringValue -> codeString

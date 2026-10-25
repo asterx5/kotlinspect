@@ -6,6 +6,10 @@
 // - Show declarations: true
 
 // Library unique name: <io.github.asterx5:kotlinspect-core>
+open annotation class io.github.asterx5.kotlinspect/ExperimentalKotlinspectApi : kotlin/Annotation { // io.github.asterx5.kotlinspect/ExperimentalKotlinspectApi|null[0]
+    constructor <init>() // io.github.asterx5.kotlinspect/ExperimentalKotlinspectApi.<init>|<init>(){}[0]
+}
+
 open annotation class io.github.asterx5.kotlinspect/InternalKotlinspectApi : kotlin/Annotation { // io.github.asterx5.kotlinspect/InternalKotlinspectApi|null[0]
     constructor <init>() // io.github.asterx5.kotlinspect/InternalKotlinspectApi.<init>|<init>(){}[0]
 }
@@ -40,6 +44,13 @@ abstract fun interface io.github.asterx5.kotlinspect/ToastFilter { // io.github.
         final val ErrorsOnly // io.github.asterx5.kotlinspect/ToastFilter.Companion.ErrorsOnly|{}ErrorsOnly[0]
             final fun <get-ErrorsOnly>(): io.github.asterx5.kotlinspect/ToastFilter // io.github.asterx5.kotlinspect/ToastFilter.Companion.ErrorsOnly.<get-ErrorsOnly>|<get-ErrorsOnly>(){}[0]
     }
+}
+
+abstract interface io.github.asterx5.kotlinspect/CaptureHandle { // io.github.asterx5.kotlinspect/CaptureHandle|null[0]
+    abstract fun cancelled() // io.github.asterx5.kotlinspect/CaptureHandle.cancelled|cancelled(){}[0]
+    abstract fun completed(io.github.asterx5.kotlinspect/CapturedBody?, io.github.asterx5.kotlinspect/CapturedTimings? = ..., kotlin/String? = ...) // io.github.asterx5.kotlinspect/CaptureHandle.completed|completed(io.github.asterx5.kotlinspect.CapturedBody?;io.github.asterx5.kotlinspect.CapturedTimings?;kotlin.String?){}[0]
+    abstract fun failed(kotlin/String, io.github.asterx5.kotlinspect/CapturedTimings? = ...) // io.github.asterx5.kotlinspect/CaptureHandle.failed|failed(kotlin.String;io.github.asterx5.kotlinspect.CapturedTimings?){}[0]
+    abstract fun responseReceived(io.github.asterx5.kotlinspect/CapturedResponse) // io.github.asterx5.kotlinspect/CaptureHandle.responseReceived|responseReceived(io.github.asterx5.kotlinspect.CapturedResponse){}[0]
 }
 
 sealed interface io.github.asterx5.kotlinspect/RetentionPolicy { // io.github.asterx5.kotlinspect/RetentionPolicy|null[0]
@@ -134,6 +145,97 @@ final class io.github.asterx5.kotlinspect/BubbleOptions { // io.github.asterx5.k
         final fun <set-showLogCount>(kotlin/Boolean) // io.github.asterx5.kotlinspect/BubbleOptions.showLogCount.<set-showLogCount>|<set-showLogCount>(kotlin.Boolean){}[0]
 }
 
+final class io.github.asterx5.kotlinspect/CaptureSource { // io.github.asterx5.kotlinspect/CaptureSource|null[0]
+    final val id // io.github.asterx5.kotlinspect/CaptureSource.id|{}id[0]
+        final fun <get-id>(): kotlin/String // io.github.asterx5.kotlinspect/CaptureSource.id.<get-id>|<get-id>(){}[0]
+
+    final fun equals(kotlin/Any?): kotlin/Boolean // io.github.asterx5.kotlinspect/CaptureSource.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // io.github.asterx5.kotlinspect/CaptureSource.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // io.github.asterx5.kotlinspect/CaptureSource.toString|toString(){}[0]
+
+    final object Companion { // io.github.asterx5.kotlinspect/CaptureSource.Companion|null[0]
+        final val ALAMOFIRE // io.github.asterx5.kotlinspect/CaptureSource.Companion.ALAMOFIRE|{}ALAMOFIRE[0]
+            final fun <get-ALAMOFIRE>(): io.github.asterx5.kotlinspect/CaptureSource // io.github.asterx5.kotlinspect/CaptureSource.Companion.ALAMOFIRE.<get-ALAMOFIRE>|<get-ALAMOFIRE>(){}[0]
+        final val KTOR // io.github.asterx5.kotlinspect/CaptureSource.Companion.KTOR|{}KTOR[0]
+            final fun <get-KTOR>(): io.github.asterx5.kotlinspect/CaptureSource // io.github.asterx5.kotlinspect/CaptureSource.Companion.KTOR.<get-KTOR>|<get-KTOR>(){}[0]
+        final val OKHTTP // io.github.asterx5.kotlinspect/CaptureSource.Companion.OKHTTP|{}OKHTTP[0]
+            final fun <get-OKHTTP>(): io.github.asterx5.kotlinspect/CaptureSource // io.github.asterx5.kotlinspect/CaptureSource.Companion.OKHTTP.<get-OKHTTP>|<get-OKHTTP>(){}[0]
+        final val URLSESSION // io.github.asterx5.kotlinspect/CaptureSource.Companion.URLSESSION|{}URLSESSION[0]
+            final fun <get-URLSESSION>(): io.github.asterx5.kotlinspect/CaptureSource // io.github.asterx5.kotlinspect/CaptureSource.Companion.URLSESSION.<get-URLSESSION>|<get-URLSESSION>(){}[0]
+
+        final fun custom(kotlin/String): io.github.asterx5.kotlinspect/CaptureSource // io.github.asterx5.kotlinspect/CaptureSource.Companion.custom|custom(kotlin.String){}[0]
+    }
+}
+
+final class io.github.asterx5.kotlinspect/CapturedBody { // io.github.asterx5.kotlinspect/CapturedBody|null[0]
+    constructor <init>(kotlin/ByteArray, kotlin/Long, kotlin/String?, kotlin/String? = ...) // io.github.asterx5.kotlinspect/CapturedBody.<init>|<init>(kotlin.ByteArray;kotlin.Long;kotlin.String?;kotlin.String?){}[0]
+
+    final val bytes // io.github.asterx5.kotlinspect/CapturedBody.bytes|{}bytes[0]
+        final fun <get-bytes>(): kotlin/ByteArray // io.github.asterx5.kotlinspect/CapturedBody.bytes.<get-bytes>|<get-bytes>(){}[0]
+    final val contentType // io.github.asterx5.kotlinspect/CapturedBody.contentType|{}contentType[0]
+        final fun <get-contentType>(): kotlin/String? // io.github.asterx5.kotlinspect/CapturedBody.contentType.<get-contentType>|<get-contentType>(){}[0]
+    final val notCapturedReason // io.github.asterx5.kotlinspect/CapturedBody.notCapturedReason|{}notCapturedReason[0]
+        final fun <get-notCapturedReason>(): kotlin/String? // io.github.asterx5.kotlinspect/CapturedBody.notCapturedReason.<get-notCapturedReason>|<get-notCapturedReason>(){}[0]
+    final val totalSize // io.github.asterx5.kotlinspect/CapturedBody.totalSize|{}totalSize[0]
+        final fun <get-totalSize>(): kotlin/Long // io.github.asterx5.kotlinspect/CapturedBody.totalSize.<get-totalSize>|<get-totalSize>(){}[0]
+}
+
+final class io.github.asterx5.kotlinspect/CapturedHeader { // io.github.asterx5.kotlinspect/CapturedHeader|null[0]
+    constructor <init>(kotlin/String, kotlin/String) // io.github.asterx5.kotlinspect/CapturedHeader.<init>|<init>(kotlin.String;kotlin.String){}[0]
+
+    final val name // io.github.asterx5.kotlinspect/CapturedHeader.name|{}name[0]
+        final fun <get-name>(): kotlin/String // io.github.asterx5.kotlinspect/CapturedHeader.name.<get-name>|<get-name>(){}[0]
+    final val value // io.github.asterx5.kotlinspect/CapturedHeader.value|{}value[0]
+        final fun <get-value>(): kotlin/String // io.github.asterx5.kotlinspect/CapturedHeader.value.<get-value>|<get-value>(){}[0]
+}
+
+final class io.github.asterx5.kotlinspect/CapturedRequest { // io.github.asterx5.kotlinspect/CapturedRequest|null[0]
+    constructor <init>(kotlin/String, kotlin/String, kotlin.collections/List<io.github.asterx5.kotlinspect/CapturedHeader>, io.github.asterx5.kotlinspect/CapturedBody?, kotlin/Long) // io.github.asterx5.kotlinspect/CapturedRequest.<init>|<init>(kotlin.String;kotlin.String;kotlin.collections.List<io.github.asterx5.kotlinspect.CapturedHeader>;io.github.asterx5.kotlinspect.CapturedBody?;kotlin.Long){}[0]
+
+    final val body // io.github.asterx5.kotlinspect/CapturedRequest.body|{}body[0]
+        final fun <get-body>(): io.github.asterx5.kotlinspect/CapturedBody? // io.github.asterx5.kotlinspect/CapturedRequest.body.<get-body>|<get-body>(){}[0]
+    final val headers // io.github.asterx5.kotlinspect/CapturedRequest.headers|{}headers[0]
+        final fun <get-headers>(): kotlin.collections/List<io.github.asterx5.kotlinspect/CapturedHeader> // io.github.asterx5.kotlinspect/CapturedRequest.headers.<get-headers>|<get-headers>(){}[0]
+    final val method // io.github.asterx5.kotlinspect/CapturedRequest.method|{}method[0]
+        final fun <get-method>(): kotlin/String // io.github.asterx5.kotlinspect/CapturedRequest.method.<get-method>|<get-method>(){}[0]
+    final val startedAtEpochMillis // io.github.asterx5.kotlinspect/CapturedRequest.startedAtEpochMillis|{}startedAtEpochMillis[0]
+        final fun <get-startedAtEpochMillis>(): kotlin/Long // io.github.asterx5.kotlinspect/CapturedRequest.startedAtEpochMillis.<get-startedAtEpochMillis>|<get-startedAtEpochMillis>(){}[0]
+    final val url // io.github.asterx5.kotlinspect/CapturedRequest.url|{}url[0]
+        final fun <get-url>(): kotlin/String // io.github.asterx5.kotlinspect/CapturedRequest.url.<get-url>|<get-url>(){}[0]
+}
+
+final class io.github.asterx5.kotlinspect/CapturedResponse { // io.github.asterx5.kotlinspect/CapturedResponse|null[0]
+    constructor <init>(kotlin/Int, kotlin/String?, kotlin.collections/List<io.github.asterx5.kotlinspect/CapturedHeader>, kotlin/String?) // io.github.asterx5.kotlinspect/CapturedResponse.<init>|<init>(kotlin.Int;kotlin.String?;kotlin.collections.List<io.github.asterx5.kotlinspect.CapturedHeader>;kotlin.String?){}[0]
+
+    final val headers // io.github.asterx5.kotlinspect/CapturedResponse.headers|{}headers[0]
+        final fun <get-headers>(): kotlin.collections/List<io.github.asterx5.kotlinspect/CapturedHeader> // io.github.asterx5.kotlinspect/CapturedResponse.headers.<get-headers>|<get-headers>(){}[0]
+    final val httpVersion // io.github.asterx5.kotlinspect/CapturedResponse.httpVersion|{}httpVersion[0]
+        final fun <get-httpVersion>(): kotlin/String? // io.github.asterx5.kotlinspect/CapturedResponse.httpVersion.<get-httpVersion>|<get-httpVersion>(){}[0]
+    final val statusCode // io.github.asterx5.kotlinspect/CapturedResponse.statusCode|{}statusCode[0]
+        final fun <get-statusCode>(): kotlin/Int // io.github.asterx5.kotlinspect/CapturedResponse.statusCode.<get-statusCode>|<get-statusCode>(){}[0]
+    final val statusText // io.github.asterx5.kotlinspect/CapturedResponse.statusText|{}statusText[0]
+        final fun <get-statusText>(): kotlin/String? // io.github.asterx5.kotlinspect/CapturedResponse.statusText.<get-statusText>|<get-statusText>(){}[0]
+}
+
+final class io.github.asterx5.kotlinspect/CapturedTimings { // io.github.asterx5.kotlinspect/CapturedTimings|null[0]
+    constructor <init>(kotlin/Long? = ..., kotlin/Long? = ..., kotlin/Long? = ..., kotlin/Long? = ..., kotlin/Long? = ..., kotlin/Long? = ..., kotlin/Long? = ...) // io.github.asterx5.kotlinspect/CapturedTimings.<init>|<init>(kotlin.Long?;kotlin.Long?;kotlin.Long?;kotlin.Long?;kotlin.Long?;kotlin.Long?;kotlin.Long?){}[0]
+
+    final val blocked // io.github.asterx5.kotlinspect/CapturedTimings.blocked|{}blocked[0]
+        final fun <get-blocked>(): kotlin/Long? // io.github.asterx5.kotlinspect/CapturedTimings.blocked.<get-blocked>|<get-blocked>(){}[0]
+    final val connect // io.github.asterx5.kotlinspect/CapturedTimings.connect|{}connect[0]
+        final fun <get-connect>(): kotlin/Long? // io.github.asterx5.kotlinspect/CapturedTimings.connect.<get-connect>|<get-connect>(){}[0]
+    final val dns // io.github.asterx5.kotlinspect/CapturedTimings.dns|{}dns[0]
+        final fun <get-dns>(): kotlin/Long? // io.github.asterx5.kotlinspect/CapturedTimings.dns.<get-dns>|<get-dns>(){}[0]
+    final val receive // io.github.asterx5.kotlinspect/CapturedTimings.receive|{}receive[0]
+        final fun <get-receive>(): kotlin/Long? // io.github.asterx5.kotlinspect/CapturedTimings.receive.<get-receive>|<get-receive>(){}[0]
+    final val send // io.github.asterx5.kotlinspect/CapturedTimings.send|{}send[0]
+        final fun <get-send>(): kotlin/Long? // io.github.asterx5.kotlinspect/CapturedTimings.send.<get-send>|<get-send>(){}[0]
+    final val ssl // io.github.asterx5.kotlinspect/CapturedTimings.ssl|{}ssl[0]
+        final fun <get-ssl>(): kotlin/Long? // io.github.asterx5.kotlinspect/CapturedTimings.ssl.<get-ssl>|<get-ssl>(){}[0]
+    final val wait // io.github.asterx5.kotlinspect/CapturedTimings.wait|{}wait[0]
+        final fun <get-wait>(): kotlin/Long? // io.github.asterx5.kotlinspect/CapturedTimings.wait.<get-wait>|<get-wait>(){}[0]
+}
+
 final class io.github.asterx5.kotlinspect/KotlinspectCall { // io.github.asterx5.kotlinspect/KotlinspectCall|null[0]
     final val durationMillis // io.github.asterx5.kotlinspect/KotlinspectCall.durationMillis|{}durationMillis[0]
         final fun <get-durationMillis>(): kotlin/Long? // io.github.asterx5.kotlinspect/KotlinspectCall.durationMillis.<get-durationMillis>|<get-durationMillis>(){}[0]
@@ -178,6 +280,9 @@ final class io.github.asterx5.kotlinspect/KotlinspectConfigBuilder { // io.githu
     final var allowInRelease // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.allowInRelease|{}allowInRelease[0]
         final fun <get-allowInRelease>(): kotlin/Boolean // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.allowInRelease.<get-allowInRelease>|<get-allowInRelease>(){}[0]
         final fun <set-allowInRelease>(kotlin/Boolean) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.allowInRelease.<set-allowInRelease>|<set-allowInRelease>(kotlin.Boolean){}[0]
+    final var dedupeNestedCaptures // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.dedupeNestedCaptures|{}dedupeNestedCaptures[0]
+        final fun <get-dedupeNestedCaptures>(): kotlin/Boolean // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.dedupeNestedCaptures.<get-dedupeNestedCaptures>|<get-dedupeNestedCaptures>(){}[0]
+        final fun <set-dedupeNestedCaptures>(kotlin/Boolean) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.dedupeNestedCaptures.<set-dedupeNestedCaptures>|<set-dedupeNestedCaptures>(kotlin.Boolean){}[0]
     final var desktopAppName // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.desktopAppName|{}desktopAppName[0]
         final fun <get-desktopAppName>(): kotlin/String? // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.desktopAppName.<get-desktopAppName>|<get-desktopAppName>(){}[0]
         final fun <set-desktopAppName>(kotlin/String?) // io.github.asterx5.kotlinspect/KotlinspectConfigBuilder.desktopAppName.<set-desktopAppName>|<set-desktopAppName>(kotlin.String?){}[0]
@@ -296,6 +401,15 @@ final object io.github.asterx5.kotlinspect/Kotlinspect { // io.github.asterx5.ko
     final fun setBubbleVisible(kotlin/Boolean) // io.github.asterx5.kotlinspect/Kotlinspect.setBubbleVisible|setBubbleVisible(kotlin.Boolean){}[0]
     final fun startSession(kotlin/String? = ..., kotlin.collections/Set<kotlin/String> = ..., kotlin.collections/Map<kotlin/String, kotlin/String> = ..., io.github.asterx5.kotlinspect/RetentionPolicy? = ...): kotlin/String? // io.github.asterx5.kotlinspect/Kotlinspect.startSession|startSession(kotlin.String?;kotlin.collections.Set<kotlin.String>;kotlin.collections.Map<kotlin.String,kotlin.String>;io.github.asterx5.kotlinspect.RetentionPolicy?){}[0]
     final fun switchSession(kotlin/String) // io.github.asterx5.kotlinspect/Kotlinspect.switchSession|switchSession(kotlin.String){}[0]
+}
+
+final object io.github.asterx5.kotlinspect/KotlinspectIngest { // io.github.asterx5.kotlinspect/KotlinspectIngest|null[0]
+    final val isEnabled // io.github.asterx5.kotlinspect/KotlinspectIngest.isEnabled|{}isEnabled[0]
+        final fun <get-isEnabled>(): kotlin/Boolean // io.github.asterx5.kotlinspect/KotlinspectIngest.isEnabled.<get-isEnabled>|<get-isEnabled>(){}[0]
+    final val maxBodyBytes // io.github.asterx5.kotlinspect/KotlinspectIngest.maxBodyBytes|{}maxBodyBytes[0]
+        final fun <get-maxBodyBytes>(): kotlin/Int // io.github.asterx5.kotlinspect/KotlinspectIngest.maxBodyBytes.<get-maxBodyBytes>|<get-maxBodyBytes>(){}[0]
+
+    final fun begin(io.github.asterx5.kotlinspect/CapturedRequest, io.github.asterx5.kotlinspect/CaptureSource, kotlin/String? = ..., kotlin/String? = ...): io.github.asterx5.kotlinspect/CaptureHandle // io.github.asterx5.kotlinspect/KotlinspectIngest.begin|begin(io.github.asterx5.kotlinspect.CapturedRequest;io.github.asterx5.kotlinspect.CaptureSource;kotlin.String?;kotlin.String?){}[0]
 }
 
 final object io.github.asterx5.kotlinspect/KotlinspectUIKit { // io.github.asterx5.kotlinspect/KotlinspectUIKit|null[0]

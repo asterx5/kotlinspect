@@ -19,6 +19,11 @@ All versions are on Maven Central as `io.github.asterx5:kotlinspect:<version>`.
 > Kotlog.d("Auth", "Token refreshed")
 > ```
 
+- New experimental ingestion API (`KotlinspectIngest`, `CaptureSource`, `CaptureHandle`) so capture sources other than the Ktor plugin can record calls through the same redaction, sessions, retention and UI. Opt in with `@OptIn(ExperimentalKotlinspectApi::class)`.
+- A request seen by two capture sources (Ktor on an OkHttp client with the Kotlinspect interceptor, Alamofire over the automatic URLSession capture) is stored once. `dedupeNestedCaptures = false` turns this off.
+- The inspector (Compose and native iOS) shows an operation name as the call title when a source provides one, a small source badge when a session mixes sources, the source, protocol and server address in the details, and DNS, connect and TLS time when a source measures them.
+- Database version 3; the migration keeps every call, session and log.
+
 ## 1.0.0-beta12
 
 - Fix: in right-to-left apps (Arabic, Hebrew), the Compose bubble was off screen on Android, iOS and desktop, since beta11. Beta11 placed it in absolute coordinates but still from the Box's start corner, which in a right-to-left layout is the top right, so the bubble sat a full width beyond the right edge. It is now anchored to the absolute top left as well, so it rests on the right edge and follows a drag in either layout direction. Left-to-right apps were not affected.

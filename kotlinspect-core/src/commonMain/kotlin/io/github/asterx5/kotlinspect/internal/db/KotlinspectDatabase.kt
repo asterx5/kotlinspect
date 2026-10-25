@@ -1,6 +1,9 @@
 package io.github.asterx5.kotlinspect.internal.db
 
 import androidx.room.AutoMigration
+import androidx.room.migration.AutoMigrationSpec
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import androidx.room.ConstructedBy
 import androidx.room.Dao
 import androidx.room.Database
@@ -30,13 +33,13 @@ internal interface RecordDao {
 
     @Query(
         "SELECT id, sessionId, state, startedAt, durationMs, method, url, host, path, statusCode, " +
-            "requestBodySize, responseBodySize, error FROM records WHERE sessionId = :sessionId ORDER BY startedAt DESC",
+            "requestBodySize, responseBodySize, error, source, operationName FROM records WHERE sessionId = :sessionId ORDER BY startedAt DESC",
     )
     fun observeSummaries(sessionId: String): Flow<List<RecordSummary>>
 
     @Query(
         "SELECT id, sessionId, state, startedAt, durationMs, method, url, host, path, statusCode, " +
-            "requestBodySize, responseBodySize, error FROM records WHERE sessionId = :sessionId ORDER BY startedAt DESC LIMIT 1",
+            "requestBodySize, responseBodySize, error, source, operationName FROM records WHERE sessionId = :sessionId ORDER BY startedAt DESC LIMIT 1",
     )
     fun observeLatestSummary(sessionId: String): Flow<RecordSummary?>
 
@@ -177,9 +180,13 @@ internal interface LogDao {
 
 @Database(
     entities = [RecordEntity::class, SessionEntity::class, KeyValueEntity::class, LogEntity::class],
-    version = 2,
-    // Version 2 added the logs table; the migration keeps existing calls and sessions.
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    version = 3,
+    // Version 2 added the logs table. Version 3 added operation names, server addresses and
+    // per-phase timings, and renamed the Ktor source from "http" to "ktor". Both keep existing data.
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2),
+        AutoMigration(from = 2, to = 3, spec = KotlinspectDatabase.Migration2To3::class),
+    ],
     exportSchema = true,
 )
 @ConstructedBy(KotlinspectDatabaseConstructor::class)
@@ -190,6 +197,13 @@ internal abstract class KotlinspectDatabase : RoomDatabase() {
 
     companion object {
         const val FILE_NAME: String = "kotlinspect.db"
+    }
+
+    /** Ktor records were stored with source "http" before version 3. */
+    class Migration2To3 : AutoMigrationSpec {
+        override fun onPostMigrate(connection: SQLiteConnection) {
+            connection.execSQL("UPDATE records SET source = 'ktor' WHERE source = 'http'")
+        }
     }
 }
 

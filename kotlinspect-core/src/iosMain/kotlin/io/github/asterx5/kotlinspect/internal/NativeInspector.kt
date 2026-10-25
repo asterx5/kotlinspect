@@ -15,6 +15,10 @@ import io.github.asterx5.kotlinspect.internal.uimodel.levelLetter
 import io.github.asterx5.kotlinspect.internal.uimodel.presentLevels
 import io.github.asterx5.kotlinspect.internal.uimodel.presentValues
 import io.github.asterx5.kotlinspect.internal.uimodel.filterRecords
+import io.github.asterx5.kotlinspect.internal.uimodel.hasMixedSources
+import io.github.asterx5.kotlinspect.internal.uimodel.sourceLabel
+import io.github.asterx5.kotlinspect.internal.uimodel.timingPhases
+import io.github.asterx5.kotlinspect.internal.uimodel.title
 import io.github.asterx5.kotlinspect.internal.uimodel.jsonTokens
 import io.github.asterx5.kotlinspect.internal.uimodel.looksLikeJsonLines
 import io.github.asterx5.kotlinspect.internal.uimodel.orderMethods
@@ -312,6 +316,7 @@ internal class NativeInspector(
             updateMethodSegments()
             val method = methods.getOrNull(methodFilter.selectedSegmentIndex.toInt() - 1)
             shown = filterRecords(all, query, status, method)
+            showSource = hasMixedSources(all)
             val errors = all.count { it.callState == CallState.Failed || (it.statusCode ?: 0) >= 400 }
             val done = all.mapNotNull { it.durationMs }
             stats.text = "${all.size} calls  ·  $errors errors  ·  ${formatBytes(all.sumOf { it.responseBodySize ?: 0 })}" +
@@ -424,16 +429,26 @@ internal class NativeInspector(
             }
         }
 
+        // Rows show a source badge only when the session mixes capture sources.
+        private var showSource = false
+
         private fun callCell(tableView: UITableView, r: RecordSummary): UITableViewCell {
             val cell = tableView.dequeueReusableCellWithIdentifier(CELL)
                 ?: UITableViewCell(style = UITableViewCellStyle.UITableViewCellStyleSubtitle, reuseIdentifier = CELL)
+            val named = r.operationName?.isNotBlank() == true
             cell.textLabel?.attributedText = attributed {
                 text("${r.method.padEnd(6)} ", mono(13.0, UIFontWeightBold), colors.methodColor(r.method).ui())
-                text(r.path, mono(13.0, UIFontWeightRegular), UIColor.labelColor)
+                // An operation name, when the source provides one, is the title; the path moves down.
+                if (named) {
+                    text(r.title, UIFont.systemFontOfSize(14.0, UIFontWeightSemibold), UIColor.labelColor)
+                } else {
+                    text(r.path, mono(13.0, UIFontWeightRegular), UIColor.labelColor)
+                }
             }
             cell.textLabel?.lineBreakMode = platform.UIKit.NSLineBreakByTruncatingMiddle
             cell.detailTextLabel?.text = listOfNotNull(
-                r.host,
+                if (showSource) sourceLabel(r.source) else null,
+                if (named) r.path else r.host,
                 formatTime(r.startedAt),
                 formatDuration(r.durationMs),
                 r.responseBodySize?.let(::formatBytes),
@@ -620,28 +635,25 @@ internal class NativeInspector(
                     statusColor,
                 )
                 text("${r.method}  ·  ${formatDuration(r.durationMs)}  ·  ${formatBytes(r.responseBodySize)}\n", body(), UIColor.secondaryLabelColor)
+                r.operationName?.takeIf { it.isNotBlank() }?.let { text("$it\n", UIFont.systemFontOfSize(17.0, UIFontWeightSemibold), UIColor.labelColor) }
                 r.error?.let { text("\n$it\n", mono(13.0, UIFontWeightRegular), colors.error.ui()) }
                 section("URL")
                 text(r.url + "\n", mono(13.0, UIFontWeightRegular), UIColor.labelColor)
 
-                val send = r.requestSentAt?.let { it - r.startedAt }?.coerceAtLeast(0)
-                val wait = if (r.requestSentAt != null && r.responseStartedAt != null) (r.responseStartedAt - r.requestSentAt).coerceAtLeast(0) else null
-                val receive = if (r.responseStartedAt != null && r.completedAt != null) (r.completedAt - r.responseStartedAt).coerceAtLeast(0) else null
                 section("Timing")
-                listOf(Triple("Send", send, colors.redirect), Triple("Wait", wait, colors.warn), Triple("Receive", receive, colors.ok))
-                    .filter { it.second != null }
-                    .forEach { (label, ms, color) ->
-                        text("● ", body(), color.ui())
-                        text("${label.padEnd(9)}${formatDuration(ms)}\n", mono(13.0, UIFontWeightRegular), UIColor.labelColor)
-                    }
+                timingPhases(r).forEach { phase ->
+                    text("● ", body(), colors.phaseColor(phase.kind).ui())
+                    text("${phase.kind.label.padEnd(9)}${formatDuration(phase.millis)}\n", mono(13.0, UIFontWeightRegular), UIColor.labelColor)
+                }
                 section("Details")
                 listOf(
                     "Started" to formatTimestamp(r.startedAt),
+                    "Source" to sourceLabel(r.source),
                     "Protocol" to (r.protocol ?: "—"),
                     "Request" to formatBytes(r.requestBodySize),
                     "Response" to formatBytes(r.responseBodySize),
                     "Endpoint" to (r.endpointKey ?: "—"),
-                ).forEach { (k, v) ->
+                ).plus(listOfNotNull(r.serverIpAddress?.let { "Server" to it })).forEach { (k, v) ->
                     text("$k\n", caption(), UIColor.secondaryLabelColor)
                     text("$v\n", mono(13.0, UIFontWeightRegular), UIColor.labelColor)
                 }

@@ -21,6 +21,82 @@ public final class io/github/asterx5/kotlinspect/CallState : java/lang/Enum {
 	public static fun values ()[Lio/github/asterx5/kotlinspect/CallState;
 }
 
+public abstract interface class io/github/asterx5/kotlinspect/CaptureHandle {
+	public abstract fun cancelled ()V
+	public abstract fun completed (Lio/github/asterx5/kotlinspect/CapturedBody;Lio/github/asterx5/kotlinspect/CapturedTimings;Ljava/lang/String;)V
+	public abstract fun failed (Ljava/lang/String;Lio/github/asterx5/kotlinspect/CapturedTimings;)V
+	public abstract fun responseReceived (Lio/github/asterx5/kotlinspect/CapturedResponse;)V
+}
+
+public final class io/github/asterx5/kotlinspect/CaptureHandle$DefaultImpls {
+	public static synthetic fun completed$default (Lio/github/asterx5/kotlinspect/CaptureHandle;Lio/github/asterx5/kotlinspect/CapturedBody;Lio/github/asterx5/kotlinspect/CapturedTimings;Ljava/lang/String;ILjava/lang/Object;)V
+	public static synthetic fun failed$default (Lio/github/asterx5/kotlinspect/CaptureHandle;Ljava/lang/String;Lio/github/asterx5/kotlinspect/CapturedTimings;ILjava/lang/Object;)V
+}
+
+public final class io/github/asterx5/kotlinspect/CaptureSource {
+	public static final field Companion Lio/github/asterx5/kotlinspect/CaptureSource$Companion;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/CaptureSource$Companion {
+	public final fun custom (Ljava/lang/String;)Lio/github/asterx5/kotlinspect/CaptureSource;
+	public final fun getALAMOFIRE ()Lio/github/asterx5/kotlinspect/CaptureSource;
+	public final fun getKTOR ()Lio/github/asterx5/kotlinspect/CaptureSource;
+	public final fun getOKHTTP ()Lio/github/asterx5/kotlinspect/CaptureSource;
+	public final fun getURLSESSION ()Lio/github/asterx5/kotlinspect/CaptureSource;
+}
+
+public final class io/github/asterx5/kotlinspect/CapturedBody {
+	public fun <init> ([BJLjava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> ([BJLjava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getBytes ()[B
+	public final fun getContentType ()Ljava/lang/String;
+	public final fun getNotCapturedReason ()Ljava/lang/String;
+	public final fun getTotalSize ()J
+}
+
+public final class io/github/asterx5/kotlinspect/CapturedHeader {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public final fun getName ()Ljava/lang/String;
+	public final fun getValue ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/CapturedRequest {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Lio/github/asterx5/kotlinspect/CapturedBody;J)V
+	public final fun getBody ()Lio/github/asterx5/kotlinspect/CapturedBody;
+	public final fun getHeaders ()Ljava/util/List;
+	public final fun getMethod ()Ljava/lang/String;
+	public final fun getStartedAtEpochMillis ()J
+	public final fun getUrl ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/CapturedResponse {
+	public fun <init> (ILjava/lang/String;Ljava/util/List;Ljava/lang/String;)V
+	public final fun getHeaders ()Ljava/util/List;
+	public final fun getHttpVersion ()Ljava/lang/String;
+	public final fun getStatusCode ()I
+	public final fun getStatusText ()Ljava/lang/String;
+}
+
+public final class io/github/asterx5/kotlinspect/CapturedTimings {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;)V
+	public synthetic fun <init> (Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;Ljava/lang/Long;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getBlocked ()Ljava/lang/Long;
+	public final fun getConnect ()Ljava/lang/Long;
+	public final fun getDns ()Ljava/lang/Long;
+	public final fun getReceive ()Ljava/lang/Long;
+	public final fun getSend ()Ljava/lang/Long;
+	public final fun getSsl ()Ljava/lang/Long;
+	public final fun getWait ()Ljava/lang/Long;
+}
+
+public abstract interface annotation class io/github/asterx5/kotlinspect/ExperimentalKotlinspectApi : java/lang/annotation/Annotation {
+}
+
 public abstract interface class io/github/asterx5/kotlinspect/HeaderRedactor {
 	public abstract fun redact (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
 }
@@ -78,6 +154,7 @@ public final class io/github/asterx5/kotlinspect/KotlinspectConfigBuilder {
 	public final fun bubble (Lkotlin/jvm/functions/Function1;)V
 	public final fun getAllowInRelease ()Z
 	public final fun getBubble ()Lio/github/asterx5/kotlinspect/BubbleOptions;
+	public final fun getDedupeNestedCaptures ()Z
 	public final fun getDesktopAppName ()Ljava/lang/String;
 	public final fun getEnabled ()Z
 	public final fun getLogs ()Lio/github/asterx5/kotlinspect/LogOptions;
@@ -91,6 +168,7 @@ public final class io/github/asterx5/kotlinspect/KotlinspectConfigBuilder {
 	public final fun redactQueryParameters ([Ljava/lang/String;)V
 	public final fun retentionFor (Ljava/lang/String;Lio/github/asterx5/kotlinspect/RetentionPolicy;)V
 	public final fun setAllowInRelease (Z)V
+	public final fun setDedupeNestedCaptures (Z)V
 	public final fun setDesktopAppName (Ljava/lang/String;)V
 	public final fun setEnabled (Z)V
 	public final fun setMaxBodyBytes (J)V
@@ -98,6 +176,14 @@ public final class io/github/asterx5/kotlinspect/KotlinspectConfigBuilder {
 	public final fun setSessionPolicy (Lio/github/asterx5/kotlinspect/SessionPolicy;)V
 	public final fun toast (Lkotlin/jvm/functions/Function1;)V
 	public final fun unredactHeaders ([Ljava/lang/String;)V
+}
+
+public final class io/github/asterx5/kotlinspect/KotlinspectIngest {
+	public static final field INSTANCE Lio/github/asterx5/kotlinspect/KotlinspectIngest;
+	public final fun begin (Lio/github/asterx5/kotlinspect/CapturedRequest;Lio/github/asterx5/kotlinspect/CaptureSource;Ljava/lang/String;Ljava/lang/String;)Lio/github/asterx5/kotlinspect/CaptureHandle;
+	public static synthetic fun begin$default (Lio/github/asterx5/kotlinspect/KotlinspectIngest;Lio/github/asterx5/kotlinspect/CapturedRequest;Lio/github/asterx5/kotlinspect/CaptureSource;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/github/asterx5/kotlinspect/CaptureHandle;
+	public final fun getMaxBodyBytes ()I
+	public final fun isEnabled ()Z
 }
 
 public final class io/github/asterx5/kotlinspect/KotlinspectPluginConfig {

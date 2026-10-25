@@ -160,6 +160,66 @@ public class ToastController internal constructor(private val runtime: Kotlinspe
     }
 }
 
+// region Sources and timings
+
+/** Display name of a record source: "Ktor", "OkHttp", "URLSession", "Alamofire", or a custom id. */
+@InternalKotlinspectApi
+public fun sourceLabel(source: String): String = when (source) {
+    "ktor", "http" -> "Ktor"
+    "okhttp" -> "OkHttp"
+    "urlsession" -> "URLSession"
+    "alamofire" -> "Alamofire"
+    else -> source
+}
+
+/** True when a list mixes capture sources, which is when rows show a source badge. */
+@InternalKotlinspectApi
+public fun hasMixedSources(records: List<RecordSummary>): Boolean {
+    val first = records.firstOrNull()?.source ?: return false
+    return records.any { it.source != first }
+}
+
+/** The row title: the operation name when a source provides one, else the path. */
+@InternalKotlinspectApi
+public val RecordSummary.title: String get() = operationName?.takeIf { it.isNotBlank() } ?: path
+
+@InternalKotlinspectApi
+public enum class TimingPhaseKind(public val label: String) {
+    Blocked("Blocked"), Dns("DNS"), Connect("Connect"), Ssl("TLS"), Send("Send"), Wait("Wait"), Receive("Receive"),
+}
+
+@InternalKotlinspectApi
+public class TimingPhase(public val kind: TimingPhaseKind, public val millis: Long)
+
+/**
+ * The phases of a call, in order, for the timing bar. Measured phases (sources that report them)
+ * win; send, wait and receive otherwise come from the record's timestamps, as for Ktor calls. TLS
+ * is part of connect, so connect is shown without it and the phases add up without overlap.
+ */
+@InternalKotlinspectApi
+public fun timingPhases(r: RecordEntity): List<TimingPhase> {
+    val sentAt = r.requestSentAt
+    val responseAt = r.responseStartedAt
+    val completedAt = r.completedAt
+    val before = listOfNotNull(r.timingBlocked, r.timingDns, r.timingConnect).sum()
+    val derivedSend = sentAt?.let { (it - r.startedAt - before).coerceAtLeast(0) }
+    val derivedWait = if (sentAt != null && responseAt != null) (responseAt - sentAt).coerceAtLeast(0) else null
+    val derivedReceive = if (responseAt != null && completedAt != null) (completedAt - responseAt).coerceAtLeast(0) else null
+    val ssl = r.timingSsl
+    val connect = r.timingConnect?.let { if (ssl != null) (it - ssl).coerceAtLeast(0) else it }
+    return listOfNotNull(
+        r.timingBlocked?.let { TimingPhase(TimingPhaseKind.Blocked, it) },
+        r.timingDns?.let { TimingPhase(TimingPhaseKind.Dns, it) },
+        connect?.let { TimingPhase(TimingPhaseKind.Connect, it) },
+        ssl?.let { TimingPhase(TimingPhaseKind.Ssl, it) },
+        (r.timingSend ?: derivedSend)?.let { TimingPhase(TimingPhaseKind.Send, it) },
+        (r.timingWait ?: derivedWait)?.let { TimingPhase(TimingPhaseKind.Wait, it) },
+        (r.timingReceive ?: derivedReceive)?.let { TimingPhase(TimingPhaseKind.Receive, it) },
+    )
+}
+
+// endregion
+
 // region Logs
 
 /**

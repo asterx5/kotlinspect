@@ -171,6 +171,19 @@ public object Kotlinspect {
 
     private fun currentConfig(): ResolvedConfig = runtimeRef.load()?.config ?: ResolvedConfig.from(builder)
 
+    /** [isEnabled] without allocating, for capture paths that run on every request. */
+    internal fun isCaptureEnabled(): Boolean {
+        val config = runtimeRef.load()?.config
+        return if (config != null) {
+            config.enabled && Platform.isReady && (Platform.isDebugBuild || config.allowInRelease)
+        } else {
+            builder.enabled && Platform.isReady && (Platform.isDebugBuild || builder.allowInRelease)
+        }
+    }
+
+    internal fun maxBodyBytesForIngest(): Int =
+        (runtimeRef.load()?.config?.maxBodyBytes ?: builder.maxBodyBytes).coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
+
     /** The running runtime, started on first use. Null when disabled. */
     internal fun runtimeOrNull(): KotlinspectRuntime? {
         runtimeRef.load()?.let { return if (it.config.enabled) it else null }

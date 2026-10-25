@@ -42,6 +42,7 @@ internal data class ResolvedConfig(
     val retention: RetentionPolicy,
     val maxBodyBytes: Long,
     val desktopAppName: String?,
+    val dedupeNestedCaptures: Boolean,
     val redaction: Redaction,
     val bodyRedactors: List<BodyRedactor>,
     val sessionRetention: Map<String, RetentionPolicy>,
@@ -63,6 +64,7 @@ internal data class ResolvedConfig(
             retention = b.retention,
             maxBodyBytes = b.maxBodyBytes.coerceAtLeast(0),
             desktopAppName = b.desktopAppName,
+            dedupeNestedCaptures = b.dedupeNestedCaptures,
             redaction = Redaction(b.redactedHeaders.toSet(), b.redactedQueryParameters.toSet(), b.headerRedactors.toList<HeaderRedactor>()),
             bodyRedactors = b.bodyRedactors.toList(),
             sessionRetention = b.sessionRetention.toMap(),
@@ -79,9 +81,10 @@ internal data class ResolvedConfig(
     }
 }
 
-/** Kinds of [RecordEntity.source]. Future sources (WebSocket, GraphQL, custom) plug in here. */
+/** Values of [RecordEntity.source] and [RecordEntity.kind]. */
 internal object RecordSources {
-    const val HTTP: String = "http"
+    /** The Ktor plugin. Stored as "http" before database version 3. */
+    const val KTOR: String = "ktor"
     const val KIND_HTTP_CALL: String = "http.call"
 }
 
@@ -209,24 +212,116 @@ internal class KotlinspectRuntime(
 
     override fun begin(record: RecordEntity, sessionName: String?) = enqueue {
         val sessionId = if (sessionName != null) findOrCreateSession(sessionName) else currentOrDefault()
+        store(record, sessionId)
+    }
+
+    /**
+     * Like [begin], but [sessionRef] may be a session id or a session name. Must run on the op
+     * loop (inside [enqueue]).
+     */
+    suspend fun beginInLoop(record: RecordEntity, sessionRef: String?) {
+        val sessionId = when {
+            sessionRef == null -> currentOrDefault()
+            database.sessions().get(sessionRef) != null -> sessionRef
+            else -> findOrCreateSession(sessionRef)
+        }
+        store(record, sessionId)
+    }
+
+    private suspend fun store(record: RecordEntity, sessionId: String) {
         recordSessions[record.id] = sessionId
-        database.records().upsert(record.copy(sessionId = sessionId))
+        val stored = record.copy(sessionId = sessionId)
+        database.records().upsert(stored)
+        trackOuter(stored)
     }
 
     override fun update(record: RecordEntity) = enqueue { write(record) }
 
-    override fun finish(record: RecordEntity) = enqueue {
+    override fun finish(record: RecordEntity) = enqueue { finishInLoop(record) }
+
+    /** [finish] for callers already on the op loop. */
+    suspend fun finishInLoop(record: RecordEntity) {
         val stored = write(record)
         recordSessions.remove(record.id)
+        untrackOuter(record.id)
         _completed.tryEmit(stored)
         scheduleRetention()
     }
 
+    /** [update] for callers already on the op loop. */
+    suspend fun updateInLoop(record: RecordEntity) {
+        write(record)
+    }
+
     private suspend fun write(record: RecordEntity): RecordEntity {
         val sessionId = recordSessions[record.id] ?: record.sessionId
-        val stored = record.copy(sessionId = sessionId)
+        val merged = mergedExtras[record.id]?.let { record.fillFrom(it) } ?: record
+        val stored = merged.copy(sessionId = sessionId)
         database.records().upsert(stored)
         return stored
+    }
+
+    // endregion
+
+    // region Nested captures
+
+    // Two capture sources can see the same request (Ktor on an OkHttp client with the Kotlinspect
+    // interceptor; Alamofire on a URLSession with the automatic capture). The outer source keeps
+    // the record; the inner one becomes a shadow whose extra details are merged into it.
+
+    private class InFlightOuter(val id: String, val source: String, val startedAt: Long) {
+        var claimed = false
+    }
+
+    // Owned by the op loop.
+    private val inFlightOuter = mutableMapOf<String, MutableList<InFlightOuter>>()
+    private val outerKeys = mutableMapOf<String, String>()
+    private val mergedExtras = mutableMapOf<String, CaptureExtras>()
+
+    private fun trackOuter(record: RecordEntity) {
+        if (record.source !in OUTER_SOURCES) return
+        val key = nestedCaptureKey(record.method, record.url) ?: return
+        inFlightOuter.getOrPut(key) { mutableListOf() } += InFlightOuter(record.id, record.source, record.startedAt)
+        outerKeys[record.id] = key
+    }
+
+    private fun untrackOuter(recordId: String) {
+        mergedExtras.remove(recordId)
+        val key = outerKeys.remove(recordId) ?: return
+        val list = inFlightOuter[key] ?: return
+        list.removeAll { it.id == recordId }
+        if (list.isEmpty()) inFlightOuter.remove(key)
+    }
+
+    /**
+     * Pairs an inner capture with the oldest unclaimed in-flight outer record for the same request
+     * that started no later than it. Returns that record's id, or null when the inner capture
+     * should be stored on its own. Must run on the op loop.
+     */
+    fun claimOuter(innerSource: String, method: String, url: String, startedAt: Long): String? {
+        if (!config.dedupeNestedCaptures) return null
+        val outerSource = INNER_TO_OUTER[innerSource] ?: return null
+        val key = nestedCaptureKey(method, url) ?: return null
+        val outer = inFlightOuter[key]
+            ?.filter { !it.claimed && it.source == outerSource && it.startedAt <= startedAt }
+            ?.minByOrNull { it.startedAt }
+            ?: return null
+        outer.claimed = true
+        return outer.id
+    }
+
+    /**
+     * Adds a shadow capture's details to its outer record without overwriting anything the outer
+     * record already has. Must run on the op loop.
+     */
+    suspend fun mergeIntoOuter(outerId: String, extras: CaptureExtras) {
+        if (outerId in outerKeys) {
+            // Still in flight: keep the details so the outer source's later snapshots retain them.
+            mergedExtras[outerId] = mergedExtras[outerId]?.fillFrom(extras) ?: extras
+        }
+        val records = database.records()
+        val current = records.get(outerId) ?: return
+        records.upsert(current.fillFrom(extras))
     }
 
     // endregion
@@ -402,6 +497,10 @@ internal class KotlinspectRuntime(
     // endregion
 
     companion object {
+        /** Sources that wrap another capture source keep the record when both see a request. */
+        private val INNER_TO_OUTER = mapOf("okhttp" to RecordSources.KTOR, "urlsession" to "alamofire")
+        private val OUTER_SOURCES = INNER_TO_OUTER.values.toSet()
+
         private const val LOG_BATCH_DELAY_MILLIS = 50L
         private const val MAX_LOG_BATCH = 500
         private const val MAX_LOG_MESSAGE = 32_000
@@ -411,4 +510,57 @@ internal class KotlinspectRuntime(
         fun newSessionId(): String = Uuid.random().toString()
         fun newRecordId(): String = Uuid.random().toString()
     }
+}
+
+/** Details an inner capture contributes to the outer record of the same request. */
+internal data class CaptureExtras(
+    val protocol: String? = null,
+    val serverIpAddress: String? = null,
+    val operationName: String? = null,
+    val timingBlocked: Long? = null,
+    val timingDns: Long? = null,
+    val timingConnect: Long? = null,
+    val timingSsl: Long? = null,
+    val timingSend: Long? = null,
+    val timingWait: Long? = null,
+    val timingReceive: Long? = null,
+) {
+    /** Keeps this object's values and takes [other]'s only where this one has none. */
+    fun fillFrom(other: CaptureExtras): CaptureExtras = CaptureExtras(
+        protocol = protocol ?: other.protocol,
+        serverIpAddress = serverIpAddress ?: other.serverIpAddress,
+        operationName = operationName ?: other.operationName,
+        timingBlocked = timingBlocked ?: other.timingBlocked,
+        timingDns = timingDns ?: other.timingDns,
+        timingConnect = timingConnect ?: other.timingConnect,
+        timingSsl = timingSsl ?: other.timingSsl,
+        timingSend = timingSend ?: other.timingSend,
+        timingWait = timingWait ?: other.timingWait,
+        timingReceive = timingReceive ?: other.timingReceive,
+    )
+}
+
+/** Fills this record's empty fields from [extras]; values already present win. */
+internal fun RecordEntity.fillFrom(extras: CaptureExtras): RecordEntity = copy(
+    protocol = protocol ?: extras.protocol,
+    serverIpAddress = serverIpAddress ?: extras.serverIpAddress,
+    operationName = operationName ?: extras.operationName,
+    timingBlocked = timingBlocked ?: extras.timingBlocked,
+    timingDns = timingDns ?: extras.timingDns,
+    timingConnect = timingConnect ?: extras.timingConnect,
+    timingSsl = timingSsl ?: extras.timingSsl,
+    timingSend = timingSend ?: extras.timingSend,
+    timingWait = timingWait ?: extras.timingWait,
+    timingReceive = timingReceive ?: extras.timingReceive,
+)
+
+/**
+ * "GET https://host:443/path?query": the same request as seen by two capture sources maps to the
+ * same key whatever each client's URL formatting (default ports, an empty path).
+ */
+internal fun nestedCaptureKey(method: String, url: String): String? {
+    val parsed = runCatching { io.ktor.http.Url(url) }.getOrNull() ?: return null
+    val query = parsed.encodedQuery.let { if (it.isEmpty()) "" else "?$it" }
+    val path = parsed.encodedPath.ifEmpty { "/" }
+    return "${method.uppercase()} ${parsed.protocol.name}://${parsed.host.lowercase()}:${parsed.port}$path$query"
 }

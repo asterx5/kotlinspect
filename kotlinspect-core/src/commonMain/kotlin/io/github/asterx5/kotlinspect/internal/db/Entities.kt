@@ -6,9 +6,13 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * One captured event. The generic columns describe any [source]; the HTTP columns are null for
- * other kinds of records. Timing columns follow HAR: send = requestSentAt - startedAt,
- * wait = responseStartedAt - requestSentAt, receive = completedAt - responseStartedAt.
+ * One captured event. The generic columns describe any [source] ("ktor", "okhttp", "urlsession",
+ * "alamofire" or a custom id); the HTTP columns are null for other kinds of records.
+ *
+ * Timings: Ktor records derive them from timestamps, following HAR: send = requestSentAt -
+ * startedAt, wait = responseStartedAt - requestSentAt, receive = completedAt - responseStartedAt.
+ * Sources that measure phases themselves fill the `timing*` columns (milliseconds), which take
+ * precedence when present.
  */
 @Entity(
     tableName = "records",
@@ -52,6 +56,17 @@ public data class RecordEntity(
     public val responseBodyNote: String? = null,
     /** Bytes of body text stored for this record, used by size-based retention. */
     public val storedBytes: Long = 0,
+    /** A human title for the call, such as an API method name. Added in database version 3. */
+    public val operationName: String? = null,
+    public val serverIpAddress: String? = null,
+    public val timingBlocked: Long? = null,
+    public val timingDns: Long? = null,
+    public val timingConnect: Long? = null,
+    /** TLS handshake, which is part of [timingConnect]. */
+    public val timingSsl: Long? = null,
+    public val timingSend: Long? = null,
+    public val timingWait: Long? = null,
+    public val timingReceive: Long? = null,
 )
 
 @Entity(tableName = "sessions", indices = [Index("name")])
@@ -95,6 +110,8 @@ public data class RecordSummary(
     public val requestBodySize: Long?,
     public val responseBodySize: Long?,
     public val error: String?,
+    public val source: String = "ktor",
+    public val operationName: String? = null,
 )
 
 /** Aggregates for one session, computed in a single query. */
