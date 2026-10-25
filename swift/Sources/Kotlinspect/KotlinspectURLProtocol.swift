@@ -37,7 +37,7 @@ final class KotlinspectURLProtocol: URLProtocol {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     // State, touched on the inner session's serial delegate queue and in start/stop.
-    private var task: URLSessionDataTask?
+    private var innerTask: URLSessionDataTask?
     private var capture: KotlinspectCapture?
     private var response: URLResponse?
     private var received = Data()
@@ -77,11 +77,11 @@ final class KotlinspectURLProtocol: URLProtocol {
             }
         }
         capture = KotlinspectCapture.begin(request, body: body, source: "urlsession")
-        task = InnerSession.shared.start(inner as URLRequest, for: self)
+        innerTask = InnerSession.shared.start(inner as URLRequest, for: self)
     }
 
     override func stopLoading() {
-        task?.cancel()
+        innerTask?.cancel()
         InnerSession.shared.queue.addOperation { [self] in
             guard !ended else { return }
             ended = true
@@ -140,7 +140,7 @@ final class KotlinspectURLProtocol: URLProtocol {
         finishRecord(error: nil)
         onClient {
             self.client?.urlProtocol(self, wasRedirectedTo: redirect, redirectResponse: response)
-            self.task?.cancel()
+            self.innerTask?.cancel()
             self.client?.urlProtocol(self, didFailWithError: URLError(.cancelled))
         }
     }
