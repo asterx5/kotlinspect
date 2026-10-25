@@ -4,6 +4,8 @@ import java.io.File
 import java.util.ServiceLoader
 
 internal actual object Platform {
+    actual val supportsStorage: Boolean = true
+
     actual val isReady: Boolean = true
 
     /**

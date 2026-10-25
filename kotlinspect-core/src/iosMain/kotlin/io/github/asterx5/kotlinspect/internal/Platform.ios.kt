@@ -34,6 +34,8 @@ import platform.darwin.dispatch_time
 import kotlin.experimental.ExperimentalNativeApi
 
 internal actual object Platform {
+    actual val supportsStorage: Boolean = true
+
     actual val isReady: Boolean = true
 
     actual val isDebugBuild: Boolean

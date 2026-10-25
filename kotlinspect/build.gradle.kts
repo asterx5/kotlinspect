@@ -28,6 +28,17 @@ kotlin {
 
     jvm()
 
+    // Web: compile-compatibility targets. Everything compiles and runs, and does nothing.
+    js(IR) {
+        browser { testTask { enabled = false } }
+        nodejs()
+    }
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs {
+        browser { testTask { enabled = false } }
+        nodejs()
+    }
+
     android {
         namespace = "io.github.asterx5.kotlinspect.lib"
         compileSdk = libs.versions.ks.compileSdk.get().toInt()

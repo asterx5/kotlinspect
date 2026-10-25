@@ -11,8 +11,8 @@ import io.github.asterx5.kotlinspect.internal.KotlinspectRuntime
 import io.github.asterx5.kotlinspect.internal.db.RecordEntity
 import io.github.asterx5.kotlinspect.internal.localTime
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
+import io.github.asterx5.kotlinspect.internal.Platform
+import io.github.asterx5.kotlinspect.internal.ioDispatcher
 import kotlinx.coroutines.withContext
 import kotlin.concurrent.Volatile
 
@@ -47,8 +47,9 @@ internal object HarExporter {
         outputPath: String? = null,
         onProgress: ((Int, Int) -> Unit)? = null,
     ): HarExportResult {
+        if (!Platform.supportsStorage) return HarExportResult.Failure("not supported on web")
         if (runtime == null) return HarExportResult.Failure("Kotlinspect is disabled")
-        return withContext(Dispatchers.IO) {
+        return withContext(ioDispatcher) {
             try {
                 exportOrFail(runtime, selection, options, outputPath, onProgress)
             } catch (e: CancellationException) {

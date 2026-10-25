@@ -10,6 +10,9 @@ internal expect object Platform {
     /** Debuggable APK on Android, debug framework on iOS, not a packaged app on desktop. */
     val isDebugBuild: Boolean
 
+    /** False on web, where Kotlinspect is a no-op: no database, no files, no UI. */
+    val supportsStorage: Boolean
+
     /** Shows the automatic bubble and toast. Called once, when capture starts. */
     fun onRuntimeStarted(host: KotlinspectHost)
 

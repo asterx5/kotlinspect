@@ -51,6 +51,7 @@ ks-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core",
 ks-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "ks-coroutines" }
 ks-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "ks-serialization" }
 ks-room-runtime = { module = "androidx.room:room-runtime", version.ref = "ks-room" }
+ks-room-common = { module = "androidx.room:room-common", version.ref = "ks-room" }
 ks-room-compiler = { module = "androidx.room:room-compiler", version.ref = "ks-room" }
 ks-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "ks-sqlite" }
 ks-sqlite-framework = { module = "androidx.sqlite:sqlite-framework", version.ref = "ks-sqlite" }

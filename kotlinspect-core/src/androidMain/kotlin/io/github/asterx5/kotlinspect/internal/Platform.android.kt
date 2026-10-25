@@ -12,6 +12,8 @@ import io.github.asterx5.kotlinspect.InternalKotlinspectApi
 import java.util.ServiceLoader
 
 internal actual object Platform {
+    actual val supportsStorage: Boolean = true
+
     @SuppressLint("StaticFieldLeak")
     @Volatile
     private var appContext: Context? = null

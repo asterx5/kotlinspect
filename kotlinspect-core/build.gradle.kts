@@ -61,6 +61,17 @@ kotlin {
 
     jvm()
 
+    // Web: compile-compatibility targets. Everything compiles and runs, and does nothing.
+    js(IR) {
+        browser { testTask { enabled = false } }
+        nodejs()
+    }
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs {
+        browser { testTask { enabled = false } }
+        nodejs()
+    }
+
     android {
         namespace = "io.github.asterx5.kotlinspect.core"
         compileSdk = libs.versions.ks.compileSdk.get().toInt()
@@ -99,6 +110,11 @@ kotlin {
             api(project(":kotlog"))
             implementation(libs.ks.coroutines.core)
             implementation(libs.ks.serialization.json)
+            // Room's annotations only: the entities and DAOs are shared, the database is not.
+            implementation(libs.ks.room.common)
+        }
+        // The Room database: every platform with storage, which is all but web.
+        getByName("persistentMain").dependencies {
             implementation(libs.ks.room.runtime)
         }
         // OkHttp is the app's own dependency: compileOnly keeps it out of the published POM and
