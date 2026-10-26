@@ -24,8 +24,10 @@ struct ContentView: View {
                 Section {
                     Text(status).font(.footnote.monospaced()).accessibilityIdentifier("status")
                     // Read by the UI tests to explain a failure.
-                    Text("enabled=\(Kotlinspect.isEnabled) session=\(Kotlinspect.activeSession.rawValue.prefix(8))")
-                        .font(.caption2.monospaced()).accessibilityIdentifier("diag")
+                    TimelineView(.periodic(from: .now, by: 1)) { _ in
+                        Text("enabled=\(Kotlinspect.isEnabled) session=\(Kotlinspect.activeSession.rawValue.prefix(8)) \(Self.windowsState())")
+                            .font(.caption2.monospaced()).accessibilityIdentifier("diag")
+                    }
                     if CommandLine.arguments.contains("-kotlinspect-report-db") {
                         Text(Self.databaseState()).accessibilityIdentifier("dbState")
                     }
@@ -132,6 +134,20 @@ struct ContentView: View {
         DispatchQueue.main.async {
             status = "\(label): " + (error.map { "\($0.localizedDescription)" } ?? "HTTP \(code ?? 0)")
         }
+    }
+
+    /// Windows and whether the bubble view is in one, for the UI tests' failure messages.
+    static func windowsState() -> String {
+        let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows)
+        func find(_ view: UIView) -> UIView? {
+            if view.accessibilityIdentifier == "kotlinspect.bubble" { return view }
+            for sub in view.subviews { if let hit = find(sub) { return hit } }
+            return nil
+        }
+        let levels = windows.map { "\(Int($0.windowLevel.rawValue))\($0.isHidden ? "h" : "")" }.joined(separator: ",")
+        let bubble = windows.lazy.compactMap { find($0) }.first
+        let state = bubble.map { "bubble hidden=\($0.isHidden) alpha=\($0.alpha) frame=\(Int($0.frame.minX)),\(Int($0.frame.minY))" } ?? "no bubble view"
+        return "windows=[\(levels)] \(state)"
     }
 
     /// For the Release UI test: Kotlinspect must not create its database there.
