@@ -7,6 +7,7 @@ import kotlinx.cinterop.useContents
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSURL
 import platform.Foundation.NSApplicationSupportDirectory
+import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
@@ -78,7 +79,11 @@ internal object IosUi {
     private var activeHost: KotlinspectHost? = null
 
     private fun activeScene(): UIWindowScene? {
-        val scenes = UIApplication.sharedApplication.connectedScenes.filterIsInstance<UIWindowScene>()
+        // Only apps have a UIApplication: test runners and app extensions don't, and reading it
+        // there would crash.
+        if (!NSBundle.mainBundle.bundlePath.endsWith(".app")) return null
+        val app = runCatching { UIApplication.sharedApplication }.getOrNull() ?: return null
+        val scenes = app.connectedScenes.filterIsInstance<UIWindowScene>()
         return scenes.firstOrNull { it.activationState == UISceneActivationStateForegroundActive } ?: scenes.firstOrNull()
     }
 
