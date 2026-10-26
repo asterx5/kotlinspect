@@ -1,7 +1,8 @@
 name: iOS
 
-# Verifies the Swift package on macOS: XCFramework build, package tests on a simulator, public
-# interface check, the Swift sample's UI tests in Debug and Release, and dependency checks.
+# Verifies the Swift packages on macOS: XCFramework build, package tests on a simulator (Kotlinspect
+# and the Alamofire adapter in swift/KotlinspectAlamofire), public interface check, the Swift
+# sample's UI tests in Debug and Release, and dependency checks.
 # It never publishes anything. Each step runs through .github/scripts/step.sh, which turns the
 # lines explaining a failure into annotations.
 on:
@@ -65,10 +66,17 @@ jobs:
           echo "::notice title=Simulator::$UDID"
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
 
+      # Xcode names a package's test scheme "<name>-Package" only when it has several products.
       - name: Package tests
         run: |
-          $STEP package-tests xcodebuild test -scheme Kotlinspect-Package -destination "id=${{ steps.sim.outputs.udid }}" \
+          set -e
+          scheme() { xcodebuild -list -json | python3 -c 'import json,sys; s=json.load(sys.stdin)["workspace"]["schemes"]; print(sys.argv[1]+"-Package" if sys.argv[1]+"-Package" in s else sys.argv[1])' "$1"; }
+          $STEP package-tests xcodebuild test -scheme "$(scheme Kotlinspect)" -destination "id=${{ steps.sim.outputs.udid }}" \
             -resultBundlePath build/results/package.xcresult
+          ROOT="$PWD"
+          cd swift/KotlinspectAlamofire
+          "$ROOT/$STEP" alamofire-tests xcodebuild test -scheme "$(scheme KotlinspectAlamofire)" -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath "$ROOT/build/results/alamofire.xcresult"
 
       # The interface is generated with library evolution only to read it. Its re-verification is
       # skipped: the module and its main type are both named Kotlinspect, which textual interfaces
@@ -119,9 +127,9 @@ jobs:
       # Apps add the package by URL, so the scratch app does too: a throwaway git copy of this
       # commit with the built XCFramework committed at a relative path (a URL package cannot
       # point outside itself). Nothing is published. Xcode checks out every dependency a package
-      # declares (Alamofire's sources are downloaded), but builds only the products an app uses:
-      # this step fails if a Kotlinspect-only app compiles or links any Alamofire code.
-      - name: Apps using only Kotlinspect never build Alamofire
+      # declares, which is why the Alamofire adapter is a package of its own: this step fails if a
+      # Kotlinspect-only app downloads, compiles or links any Alamofire code.
+      - name: Apps using only Kotlinspect never fetch Alamofire
         run: |
           set -e
           ROOT="$PWD"
@@ -151,20 +159,45 @@ jobs:
           (cd "$SCRATCH" && "$ROOT/$STEP" scratch-build xcodebuild build -scheme Scratch \
             -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath "$SCRATCH/dd" \
             -clonedSourcePackagesDirPath "$SCRATCH/packages")
-          echo "::notice title=Xcode checkouts::$(ls "$SCRATCH/packages/checkouts" | tr '\n' ' ')"
+          CHECKOUTS=$(ls "$SCRATCH/packages/checkouts" | tr '\n' ' ')
+          echo "::notice title=Xcode checkouts::$CHECKOUTS"
+          if echo "$CHECKOUTS" | grep -qi alamofire; then
+            echo "::error::Alamofire was fetched for a Kotlinspect-only app"; exit 1
+          fi
           find "$SCRATCH/dd/Build" -iname "*alamofire*" > "$SCRATCH/alamofire-products.txt"
           if [ -s "$SCRATCH/alamofire-products.txt" ]; then
             head -5 "$SCRATCH/alamofire-products.txt" | while IFS= read -r f; do echo "::error title=Alamofire built::$f"; done
             exit 1
           fi
           find "$SCRATCH/dd/Build" -name "Kotlinspect.swiftmodule" | grep -q . || { echo "::error::Kotlinspect was not built"; exit 1; }
-          echo "::notice title=Scratch app::built with Kotlinspect and without any Alamofire code"
+          echo "::notice title=Scratch app::built with Kotlinspect, without fetching or building Alamofire"
+
+      # The release copies the adapter to its own repository with this script; check its output.
+      - name: Published form of the Alamofire adapter
+        run: |
+          set -e
+          OUT="$RUNNER_TEMP/adapter-repo"
+          .github/scripts/prepare-alamofire-repo.sh "$OUT" "https://github.com/${{ github.repository }}.git" 9.9.9
+          (cd "$OUT" && swift package dump-package > "$RUNNER_TEMP/adapter.json")
+          python3 - "$RUNNER_TEMP/adapter.json" <<'PY'
+          import json, sys
+          deps = json.load(open(sys.argv[1]))["dependencies"]
+          text = json.dumps(deps)
+          # Only URL dependencies; Kotlinspect pinned to the given version.
+          assert len(deps) == 2 and all("sourceControl" in d for d in deps), text
+          assert "kotlinspect.git" in text and "9.9.9" in text and "Alamofire" in text, text
+          print("::notice title=Adapter repository::" + text[:800])
+          PY
+          test -f "$OUT/LICENSE" && test -f "$OUT/README.md" && test -d "$OUT/Sources/KotlinspectAlamofire"
 
       - name: Alamofire floor (5.4.0)
         run: |
           set -e
+          ROOT="$PWD"
+          cd swift/KotlinspectAlamofire
           sed -i '' 's/.upToNextMajor(from: "5.4.0")/.exact("5.4.0")/' Package.swift
-          $STEP alamofire-floor xcodebuild build -scheme KotlinspectAlamofire -destination "generic/platform=iOS Simulator"
+          grep -q '.exact("5.4.0")' Package.swift
+          "$ROOT/$STEP" alamofire-floor xcodebuild build -scheme KotlinspectAlamofire -destination "generic/platform=iOS Simulator"
           git checkout Package.swift
 
       - name: Upload results

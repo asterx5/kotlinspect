@@ -119,3 +119,17 @@ extension URLRequest {
         return copy as URLRequest
     }
 }
+
+/// Test hooks for the adapter package's tests, which can't use `@testable import` across packages.
+@_spi(KotlinspectAdapters)
+public enum KotlinspectTesting {
+    /// Protocols the inner session tries before the network, so tests can answer with a mock.
+    /// Set it before the first captured request.
+    public static var innerProtocolClasses: [AnyClass]? {
+        get { InnerSession.protocolClassesForTesting }
+        set { InnerSession.protocolClassesForTesting = newValue }
+    }
+
+    /// The URLProtocol the automatic capture puts first in `.default` and `.ephemeral`.
+    public static var urlProtocolClass: AnyClass { KotlinspectURLProtocol.self }
+}

@@ -6,8 +6,10 @@ Use this for an iOS app with no Kotlin at all. Kotlin Multiplatform apps must no
 ## 1. Add the package
 
 In Xcode: File > Add Package Dependencies > `https://github.com/asterx5/kotlinspect`, a release
-version, product **Kotlinspect**. Add **KotlinspectAlamofire** too if the app uses Alamofire or
-Moya. With XcodeGen or a `Package.swift`, add the same URL and products.
+version, product **Kotlinspect**. If the app uses Alamofire or Moya, also add
+`https://github.com/asterx5/kotlinspect-alamofire` with the **same version**, product
+**KotlinspectAlamofire** (a separate package, so apps without Alamofire never download it). With
+XcodeGen or a `Package.swift`, add the same URLs and products.
 
 ## 2. Nothing else is required in Debug builds
 

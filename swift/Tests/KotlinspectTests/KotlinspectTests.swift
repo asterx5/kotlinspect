@@ -1,7 +1,5 @@
 import XCTest
-import Alamofire
 @testable @_spi(KotlinspectAdapters) import Kotlinspect
-import KotlinspectAlamofire
 
 /// Answers requests to mock.kotlinspect.test without a network, as the inner session's first
 /// protocol (see InnerSession.protocolClassesForTesting).
@@ -177,36 +175,6 @@ final class KotlinspectTests: XCTestCase {
         await fetch(request)
         let found = try await entries("case=routed", session: id)
         XCTAssertEqual(found.count, 1)
-    }
-
-    func testAlamofireSessionHelperRecordsOnce() async throws {
-        let session = KotlinspectAlamofire.session(configuration: Self.mockConfiguration())
-        _ = await session.request(url("/json?case=af-helper")).serializingData().response
-        let found = try await entries("case=af-helper")
-        try await Task.sleep(nanoseconds: 300_000_000)
-        let again = try await entries("case=af-helper")
-        XCTAssertEqual(again.count, 1)
-        XCTAssertEqual(found.count, 1)
-    }
-
-    func testAlamofireMonitorOnlyIsDeduplicated() async throws {
-        let session = Alamofire.Session(configuration: Self.mockConfiguration(), eventMonitors: [KotlinspectAlamofire.eventMonitor])
-        _ = await session.request(url("/json?case=af-monitor")).serializingData().response
-        _ = try await entries("case=af-monitor")
-        try await Task.sleep(nanoseconds: 300_000_000)
-        let recorded = try await entries("case=af-monitor").count
-        XCTAssertEqual(recorded, 1, "outer Alamofire record kept, inner URLSession one merged")
-    }
-
-    /// Alamofire's default configuration also gets the Kotlinspect protocol, which replays on the mock.
-    private static func mockConfiguration() -> URLSessionConfiguration {
-        let configuration = URLSessionConfiguration.af.default
-        var classes = configuration.protocolClasses ?? []
-        // Right after Kotlinspect's protocol, so a request it skips still reaches the mock.
-        let index = classes.firstIndex { $0 == KotlinspectURLProtocol.self }.map { $0 + 1 } ?? 0
-        classes.insert(MockServer.self, at: index)
-        configuration.protocolClasses = classes
-        return configuration
     }
 
     func testObserversAndStreamCancellation() async throws {

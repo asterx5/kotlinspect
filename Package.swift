@@ -1,7 +1,8 @@
 // swift-tools-version:5.9
-// Kotlinspect for pure iOS apps: automatic URLSession capture, an optional Alamofire adapter, and
-// the native inspector, bubble and toast. The engine is kotlinspect-core, prebuilt as an
-// XCFramework attached to each GitHub release.
+// Kotlinspect for pure iOS apps: automatic URLSession capture and the native inspector, bubble
+// and toast. The engine is kotlinspect-core, prebuilt as an XCFramework attached to each GitHub
+// release. The Alamofire adapter is its own package (swift/KotlinspectAlamofire, published as
+// github.com/asterx5/kotlinspect-alamofire), so this one has no dependencies.
 //
 // Kotlin Multiplatform apps must NOT add this package: they get Kotlinspect through Gradle and
 // their own shared framework (two Kotlin runtimes would mean two Kotlinspect instances).
@@ -24,10 +25,6 @@ let package = Package(
     platforms: [.iOS(.v14)],
     products: [
         .library(name: "Kotlinspect", targets: ["Kotlinspect"]),
-        .library(name: "KotlinspectAlamofire", targets: ["KotlinspectAlamofire"]),
-    ],
-    dependencies: [
-        .package(url: "https://github.com/Alamofire/Alamofire.git", .upToNextMajor(from: "5.4.0")),
     ],
     targets: [
         coreTarget,
@@ -37,14 +34,9 @@ let package = Package(
             dependencies: ["KotlinspectCore", "KotlinspectLoader"],
             path: "swift/Sources/Kotlinspect"
         ),
-        .target(
-            name: "KotlinspectAlamofire",
-            dependencies: ["Kotlinspect", .product(name: "Alamofire", package: "Alamofire")],
-            path: "swift/Sources/KotlinspectAlamofire"
-        ),
         .testTarget(
             name: "KotlinspectTests",
-            dependencies: ["Kotlinspect", "KotlinspectAlamofire", .product(name: "Alamofire", package: "Alamofire")],
+            dependencies: ["Kotlinspect"],
             path: "swift/Tests/KotlinspectTests"
         ),
     ]

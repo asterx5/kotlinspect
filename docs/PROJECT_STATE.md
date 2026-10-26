@@ -45,7 +45,7 @@ the app uses Compose, with zero setup and zero risk in release builds.
 | OkHttp interceptor and event listener (Android, desktop) | Done, tested on OkHttp 4.9.3, 4.12.1, 5.5.1; Retrofit sample checked on the Android emulator |
 | HAR export (Compose, UIKit, API) | Done, tested (golden file); Android share checked on the emulator |
 | Web (js, wasmJs) targets | **Skipped** for now (would need Kotlin 2.4 for web apps); parked on `vnext-web` |
-| Swift package for pure iOS apps (`Kotlinspect`, `KotlinspectAlamofire`) | Done. Verified by the macOS CI workflow (`ios.yml`): Kotlin tests on the simulator, package tests, interface check, sample UI tests in Debug and Release (inert, no database), Kotlinspect-only apps build no Alamofire code (its sources are still downloaded; see ARCHITECTURE), Alamofire 5.4.0 floor. Green on 2026-10-26; **not yet run on a real iPhone** |
+| Swift package for pure iOS apps (`Kotlinspect`; Alamofire adapter in its own package, `swift/KotlinspectAlamofire`, published to `kotlinspect-alamofire`) | Done. Verified by the macOS CI workflow (`ios.yml`): Kotlin tests on the simulator, both packages' tests, interface check, sample UI tests in Debug and Release (inert, no database), Kotlinspect-only apps never fetch Alamofire, the adapter's published form, Alamofire 5.4.0 floor. **Not yet run on a real iPhone** |
 | Old `KotlinspectSwiftUI` package | Removed on `vnext` |
 | Minimum-version dependency floors | Done, verified with an old-toolchain Android app |
 | Publishing to Maven Central | Working (manual). Free tier limit of about 1,000 files a month (see section 10) |
@@ -527,7 +527,10 @@ Suggested order:
    Swift sample on a real iPhone, open an exported HAR in Chrome DevTools, try the desktop save
    dialog; replace `1.0.0-SNAPSHOT` (`gradle.properties`, `libs.versions.toml`) and the changelog's
    "Unreleased" heading with the version; merge `vnext` into `main`;
-   run `release-ios.yml` (it tags, so do not push the tag by hand); publish to Maven Central.
+   create the empty public repository `asterx5/kotlinspect-alamofire` and add the repository
+   secret `ALAMOFIRE_REPO_TOKEN` (a fine-grained token with Contents read and write on that
+   repository only); run `release-ios.yml` (it tags both repositories, so do not push tags by
+   hand); publish to Maven Central.
 1. **Verify on iPhone** what the owner's Compose app does not exercise: a SwiftUI/UIKit app on `kotlinspect-core`, the Swift package, `Kotlog` from Swift, and a pass through the native screens.
 2. **iOS for older Kotlin:** build the iOS klibs with a toolchain older Kotlin/Native can read
    (for example a separate build on KGP 2.2), so the 2.1.20 floor also holds on iOS.

@@ -4,9 +4,13 @@
 #   1. builds the XCFramework and zips it,
 #   2. points Package.swift at the zip (URL and checksum) and commits "Release <version>" to main,
 #   3. tags that commit v<version> and creates the GitHub release with the zip, notes and skill,
-#   4. checks that a scratch app can resolve and build the tagged package, else marks the release
+#   4. copies swift/KotlinspectAlamofire to the adapter's repository (<owner>/kotlinspect-alamofire),
+#      pointing it at Kotlinspect <version>, and tags it v<version> there too,
+#   5. checks that scratch apps can resolve and build both tagged packages, else marks the release
 #      as a draft.
-# Publish the same tag to Maven Central afterwards, so both stay in lockstep.
+# The adapter's repository must exist, and the secret ALAMOFIRE_REPO_TOKEN must hold a token that
+# can push to it (a fine-grained token with Contents: read and write on that repository only).
+# Publish the same tag to Maven Central afterwards, so everything stays in lockstep.
 name: Release iOS
 
 on:
@@ -24,6 +28,9 @@ on:
 permissions:
   contents: write
 
+env:
+  ALAMOFIRE_REPO: ${{ github.repository_owner }}/kotlinspect-alamofire
+
 jobs:
   release:
     runs-on: macos-15
@@ -34,6 +41,18 @@ jobs:
         run: |
           echo "::error::Check the Swift sample on a real iPhone first, then run again with confirm_device_tested."
           exit 1
+
+      # Checked before anything is tagged, so a missing token can't leave a half-done release.
+      - name: Adapter repository access
+        env:
+          TOKEN: ${{ secrets.ALAMOFIRE_REPO_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then echo "::error::Add the ALAMOFIRE_REPO_TOKEN secret (push access to $ALAMOFIRE_REPO)."; exit 1; fi
+          git ls-remote "https://x-access-token:$TOKEN@github.com/$ALAMOFIRE_REPO.git" > /dev/null \
+            || { echo "::error::Cannot reach $ALAMOFIRE_REPO with ALAMOFIRE_REPO_TOKEN (create the repository first)."; exit 1; }
+          if git ls-remote --tags "https://x-access-token:$TOKEN@github.com/$ALAMOFIRE_REPO.git" | grep -q "refs/tags/v${{ inputs.version }}$"; then
+            echo "::error::$ALAMOFIRE_REPO already has tag v${{ inputs.version }}"; exit 1
+          fi
 
       - uses: actions/checkout@v4
         with:
@@ -89,7 +108,7 @@ jobs:
             echo "implementation(\"io.github.asterx5:kotlog:$VERSION\")              // Kotlog only, for modules that just log"
             echo '```'
             echo
-            echo "**Swift (pure iOS apps):** Xcode > File > Add Package Dependencies > \`https://github.com/${{ github.repository }}\`, version $VERSION."
+            echo "**Swift (pure iOS apps):** Xcode > File > Add Package Dependencies > \`https://github.com/${{ github.repository }}\`, version $VERSION. Alamofire or Moya apps also add \`https://github.com/$ALAMOFIRE_REPO\`, the same version."
             echo
             echo "**For AI agents:** download \`kotlinspect-skill.zip\` below and unzip it into your agent's skills folder (for Claude Code: \`~/.claude/skills/\`)."
           } >> notes.md
@@ -105,7 +124,23 @@ jobs:
             ${{ env.ZIP }}
           make_latest: true
 
-      - name: Smoke test the tagged package
+      - name: Publish the Alamofire adapter
+        env:
+          TOKEN: ${{ secrets.ALAMOFIRE_REPO_TOKEN }}
+        run: |
+          set -e
+          git clone -q "https://x-access-token:$TOKEN@github.com/$ALAMOFIRE_REPO.git" /tmp/adapter
+          .github/scripts/prepare-alamofire-repo.sh /tmp/adapter "https://github.com/${{ github.repository }}.git" "$VERSION"
+          cd /tmp/adapter
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Release $VERSION (from ${{ github.repository }}@$(git -C "$GITHUB_WORKSPACE" rev-parse --short HEAD))"
+          git tag "$TAG"
+          git push -q origin HEAD:main "$TAG"
+
+      # Xcode only makes a scheme for a package that declares a product, hence the Smoke products.
+      - name: Smoke test the tagged packages
         id: smoke
         continue-on-error: true
         run: |
@@ -117,12 +152,35 @@ jobs:
           let package = Package(
               name: "Smoke",
               platforms: [.iOS(.v14)],
+              products: [.library(name: "Smoke", targets: ["Smoke"])],
               dependencies: [.package(url: "https://github.com/${{ github.repository }}.git", exact: "$VERSION")],
               targets: [.target(name: "Smoke", dependencies: [.product(name: "Kotlinspect", package: "kotlinspect")])]
           )
           EOF
           echo 'import Kotlinspect' > Sources/Smoke/Smoke.swift
-          xcodebuild build -scheme Smoke -destination "generic/platform=iOS Simulator"
+          xcodebuild build -scheme Smoke -destination "generic/platform=iOS Simulator" -clonedSourcePackagesDirPath packages
+          if ls packages/checkouts | grep -qi alamofire; then echo "::error::A Kotlinspect-only app fetched Alamofire"; exit 1; fi
+
+          mkdir -p /tmp/smoke-af/Sources/SmokeAF && cd /tmp/smoke-af
+          cat > Package.swift <<EOF
+          // swift-tools-version:5.9
+          import PackageDescription
+          let package = Package(
+              name: "SmokeAF",
+              platforms: [.iOS(.v14)],
+              products: [.library(name: "SmokeAF", targets: ["SmokeAF"])],
+              dependencies: [
+                  .package(url: "https://github.com/${{ github.repository }}.git", exact: "$VERSION"),
+                  .package(url: "https://github.com/$ALAMOFIRE_REPO.git", exact: "$VERSION"),
+              ],
+              targets: [.target(name: "SmokeAF", dependencies: [
+                  .product(name: "Kotlinspect", package: "kotlinspect"),
+                  .product(name: "KotlinspectAlamofire", package: "kotlinspect-alamofire"),
+              ])]
+          )
+          EOF
+          printf 'import Kotlinspect\nimport KotlinspectAlamofire\nlet session = KotlinspectAlamofire.session()\n' > Sources/SmokeAF/SmokeAF.swift
+          xcodebuild build -scheme SmokeAF -destination "generic/platform=iOS Simulator"
 
       - name: Mark the release as a draft if the smoke test failed
         if: steps.smoke.outcome == 'failure'
@@ -130,5 +188,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release edit "$TAG" --draft --repo "${{ github.repository }}"
-          echo "::error::The tagged package did not build; the release is now a draft."
+          echo "::error::A tagged package did not build; the release is now a draft. Fix it and release a new version (tags stay)."
           exit 1

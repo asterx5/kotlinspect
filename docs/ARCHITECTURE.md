@@ -184,8 +184,8 @@ version `1.0.0-SNAPSHOT` so local publishing never overwrites a released version
   core is linked in. CI fails only if a Ktor engine is inside, and prints the framework size.
 - **Package.swift** at the root: `KotlinspectCore` binary target (local path through
   `KOTLINSPECT_LOCAL_XCFRAMEWORK`, else the release URL and checksum on the two marker lines),
-  `KotlinspectLoader` (Objective-C), `Kotlinspect`, `KotlinspectAlamofire` (Alamofire from 5.4.0),
-  `KotlinspectTests`. The old `KotlinspectSwiftUI` product and its Objective-C runtime glue are
+  `KotlinspectLoader` (Objective-C), `Kotlinspect`, `KotlinspectTests`; no dependencies. The
+  Alamofire adapter (Alamofire from 5.4.0) is its own package, see the deviation below. The old `KotlinspectSwiftUI` product and its Objective-C runtime glue are
   removed (owner notifies users); the README shows KMP apps the SwiftUI wrapper through their own
   framework.
 - **Swift API** as spec 4.6, with `@_implementationOnly import KotlinspectCore`. Adapter internals
@@ -228,20 +228,25 @@ version `1.0.0-SNAPSHOT` so local publishing never overwrites a released version
   URLSession and Alamofire calls, HAR export) and Release (no bubble, no `kotlinspect.db`).
 - **Workflows:** `ios.yml` (on push: Kotlin tests on the simulator, XCFramework, framework
   inspection, package tests, public interface grep with library evolution, sample UI tests in
-  Debug and Release, no Alamofire code built for Kotlinspect-only apps, Alamofire 5.4.0 floor,
+  Debug and Release, no Alamofire fetched for Kotlinspect-only apps, the adapter's published form, Alamofire 5.4.0 floor,
   artifacts). `release-ios.yml` (manual, gated on `confirm_device_tested`): builds and zips the
   XCFramework, rewrites the two Package.swift lines, commits "Release <version>" to main, tags,
   creates the release with the zip, notes and skill, then smoke-tests the tagged package and
   marks the release a draft if it fails. From now on releases are cut with this workflow, so the
   tag and the Swift package always match; pushing a tag by hand would create a release without
   the XCFramework.
-- **Deviation (Alamofire download):** the spec assumed SwiftPM resolves per product, so
-  Kotlinspect-only apps would never download Alamofire. CI showed that Xcode checks out every
-  dependency a package declares, also for URL dependencies (scratch app against a `file://` git
-  copy of the package). It builds only the products used, so the scratch check now fails if a
-  Kotlinspect-only app compiles or links any Alamofire code, and the README says the sources
-  are still downloaded. Avoiding the download entirely needs the adapter in its own repository
-  (for example `kotlinspect-alamofire`); owner's call before the first release, since moving the
-  product later would break apps that use it.
+- **Deviation (Alamofire adapter in its own package and repository):** the spec assumed SwiftPM
+  resolves per product, so Kotlinspect-only apps would never download Alamofire. CI showed that
+  Xcode and `swift package resolve` check out every dependency a package declares, also for URL
+  dependencies (scratch app against a `file://` git copy of the package); only the build is per
+  product. Owner chose (2026-10-26) to move the adapter out: `swift/KotlinspectAlamofire` is its
+  own package (depends on the root package by path, `// kotlinspect:dependency`) with its tests,
+  and the root `Package.swift` has no dependencies. `release-ios.yml` copies the folder to
+  `<owner>/kotlinspect-alamofire` through `.github/scripts/prepare-alamofire-repo.sh` (dependency
+  rewritten to Kotlinspect's URL, `exact:` the same version, since the adapter uses Kotlinspect's
+  SPI), tags it with the same version and smoke-tests both. The adapter's tests reach the
+  engine's mock hook through the new SPI `KotlinspectTesting` (`@testable` doesn't work across
+  packages). CI: the scratch check fails if a Kotlinspect-only app downloads, compiles or links
+  Alamofire, and the script's output is checked with `swift package dump-package`.
 - **Not covered:** the Kotlin ingestion tests run on the JVM only (their helpers are JVM test
   code); CI runs the common Kotlin tests on the iOS simulator.

@@ -1,6 +1,6 @@
 # XcodeGen spec for the Swift sample: `xcodegen generate` in this folder creates
-# KotlinspectSample.xcodeproj (not committed). The app depends on the Kotlinspect Swift package
-# at the repository root by path, and contains no Kotlin code.
+# KotlinspectSample.xcodeproj (not committed). The app depends by path on the Kotlinspect Swift
+# package at the repository root and on the Alamofire adapter's package, and contains no Kotlin code.
 name: KotlinspectSample
 options:
   bundleIdPrefix: io.github.asterx5.kotlinspect
@@ -9,6 +9,8 @@ options:
 packages:
   Kotlinspect:
     path: ../..
+  KotlinspectAlamofire:
+    path: ../../swift/KotlinspectAlamofire
 targets:
   KotlinspectSample:
     type: application
@@ -17,7 +19,7 @@ targets:
     dependencies:
       - package: Kotlinspect
         product: Kotlinspect
-      - package: Kotlinspect
+      - package: KotlinspectAlamofire
         product: KotlinspectAlamofire
     settings:
       base:

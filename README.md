@@ -262,9 +262,10 @@ capture, an optional Alamofire adapter, and the same native inspector, bubble an
 hood it is the same engine KMP apps use (sessions, retention, redaction, HAR export), prebuilt.
 
 **Install:** Xcode > File > Add Package Dependencies > `https://github.com/asterx5/kotlinspect`,
-the same version as the Maven artifacts, product **Kotlinspect** (and **KotlinspectAlamofire** if
-you use Alamofire or Moya). Apps that only add Kotlinspect never build or link Alamofire (Xcode
-still downloads its sources while resolving the package, as it does for every declared dependency).
+the same version as the Maven artifacts, product **Kotlinspect**. Apps using Alamofire or Moya also
+add `https://github.com/asterx5/kotlinspect-alamofire`, the **same version**, product
+**KotlinspectAlamofire**. The adapter is a package of its own so that apps using only Kotlinspect
+never download Alamofire.
 
 **Zero setup in Debug builds.** Nothing to call: the package starts itself when the app has
 finished launching, and records `URLSession.shared` and every session built from `.default` or
@@ -288,7 +289,7 @@ struct MyApp: App {
 If the bubble doesn't appear with no code at all (for example when your linker settings strip
 unused code), that one `Kotlinspect.start()` line is all that's needed.
 
-**Alamofire and Moya:**
+**Alamofire and Moya** (package `kotlinspect-alamofire`):
 
 ```swift
 import KotlinspectAlamofire
@@ -504,7 +505,9 @@ Use `enabled = false` as a master switch in any build.
 - `kotlinspect-core/`: capture, storage, sessions, the public API and the native iOS UI.
 - `kotlinspect/`: the Compose UI on top of core.
 - `kotlog/`: the `Kotlog` logging API, with no dependencies.
-- `Package.swift`, `swift/`: the Swift package for pure iOS apps (`Kotlinspect`, `KotlinspectAlamofire`).
+- `Package.swift`, `swift/`: the Swift package for pure iOS apps (`Kotlinspect`).
+  `swift/KotlinspectAlamofire/` is the Alamofire adapter's package, published to
+  `asterx5/kotlinspect-alamofire` by the release workflow; change it here, not there.
 - `samples/swift-ios/`: the SwiftUI sample for the Swift package (XcodeGen project).
 - `shared/`, `androidApp/`, `desktopApp/`, `iosApp/`: a sample app with a playground and a Postman-style request builder. It consumes the library from Maven Local, the same way other apps do.
 
