@@ -39,13 +39,20 @@ the app uses Compose, with zero setup and zero risk in release builds.
 | Placeable overlays + session scoping | Done, verified on Android |
 | Kotlog + Logs tab + bubble log count, Compose | Done, tested, verified on Android emulator (beta07) |
 | Logs tab + bubble log count, native iOS (UIKit) | Done (beta07). In the owner's iPhone app since beta09; not checked feature by feature |
-| `KotlinspectSwiftUI` Swift package | Done, **never compiled** (no Mac available) |
+| **Unreleased, on branch `vnext`** (see [`ARCHITECTURE.md`](ARCHITECTURE.md)) | |
+| `KtLog` renamed `Kotlog` | Done (breaking, announced in README and changelog) |
+| Ingestion API, nested-capture dedupe, database v3 | Done, tested on the JVM |
+| OkHttp interceptor and event listener (Android, desktop) | Done, tested on OkHttp 4.9.3, 4.12.1, 5.5.1; Retrofit sample checked on the Android emulator |
+| HAR export (Compose, UIKit, API) | Done, tested (golden file); Android share checked on the emulator |
+| Web (js, wasmJs) targets | **Skipped** for now (would need Kotlin 2.4 for web apps); parked on `vnext-web` |
+| Swift package for pure iOS apps (`Kotlinspect`, `KotlinspectAlamofire`) | Done. Verified by the macOS CI workflow (`ios.yml`): package tests, interface check, sample UI tests in Debug; **not yet run on a real iPhone** |
+| Old `KotlinspectSwiftUI` package | Removed on `vnext` |
 | Minimum-version dependency floors | Done, verified with an old-toolchain Android app |
 | Publishing to Maven Central | Working (manual). Free tier limit of about 1,000 files a month (see section 10) |
 | GitHub releases | Automated by a workflow on tag push |
 | AI agent skill | Published as `kotlinspect-skill.zip` on every release |
 | Binary compatibility with newer Compose | Checked by hand before releases since beta09/beta11 (section 9); not automated |
-| CI for tests | **Not yet** |
+| CI for tests | iOS/Swift only (`ios.yml` on every push); JVM tests and ABI checks still run by hand |
 
 ---
 

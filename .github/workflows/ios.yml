@@ -100,6 +100,8 @@ jobs:
       # is arm64 only (iosX64 is not a published target), so build the active one.
       - name: Sample UI test (Release)
         run: |
+          # Start clean: the Debug run's database must not count as one the Release build made.
+          xcrun simctl uninstall "${{ steps.sim.outputs.udid }}" io.github.asterx5.kotlinspect.sample || true
           $STEP sample-release xcodebuild test -project samples/swift-ios/KotlinspectSample.xcodeproj -scheme KotlinspectSample \
             -configuration Release -destination "id=${{ steps.sim.outputs.udid }}" -only-testing:KotlinspectSampleUITests/ReleaseTests \
             -resultBundlePath build/results/sample-release.xcresult ONLY_ACTIVE_ARCH=YES
