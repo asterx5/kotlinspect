@@ -113,25 +113,39 @@ jobs:
             -configuration Release -destination "id=${{ steps.sim.outputs.udid }}" -only-testing:KotlinspectSampleUITests/ReleaseTests \
             -resultBundlePath build/results/sample-release.xcresult ONLY_ACTIVE_ARCH=YES
 
+      # Apps add the package by URL, so the scratch app does too: a throwaway git copy of this
+      # commit with the built XCFramework committed at a relative path (a URL package cannot
+      # point outside itself). Nothing is published.
       - name: Apps using only Kotlinspect never fetch Alamofire
         run: |
           set -e
           ROOT="$PWD"
-          mkdir -p build/scratch/Sources/Scratch
-          cat > build/scratch/Package.swift <<EOF
+          REPO="$RUNNER_TEMP/kotlinspect-git"
+          git clone -q "$ROOT" "$REPO"
+          (cd "$REPO" && git checkout -q "$GITHUB_SHA" && git checkout -q -b scratch)
+          cp -R "$ROOT/$KOTLINSPECT_LOCAL_XCFRAMEWORK" "$REPO/KotlinspectCore.xcframework"
+          (cd "$REPO" && git add -f KotlinspectCore.xcframework \
+            && git -c user.name=ci -c user.email=ci@localhost commit -q -m "scratch: local framework")
+          SCRATCH="$RUNNER_TEMP/scratch"
+          mkdir -p "$SCRATCH/Sources/Scratch"
+          cat > "$SCRATCH/Package.swift" <<EOF
           // swift-tools-version:5.9
           import PackageDescription
           let package = Package(
               name: "Scratch",
               platforms: [.iOS(.v14)],
-              dependencies: [.package(path: "$ROOT")],
-              targets: [.target(name: "Scratch", dependencies: [.product(name: "Kotlinspect", package: "kotlinspect")])]
+              products: [.library(name: "Scratch", targets: ["Scratch"])],
+              dependencies: [.package(url: "file://$REPO", branch: "scratch")],
+              targets: [.target(name: "Scratch", dependencies: [.product(name: "Kotlinspect", package: "kotlinspect-git")])]
           )
           EOF
-          echo 'import Kotlinspect' > build/scratch/Sources/Scratch/Scratch.swift
-          export KOTLINSPECT_LOCAL_XCFRAMEWORK
-          (cd build/scratch && $ROOT/$STEP scratch-resolve xcodebuild -resolvePackageDependencies -scheme Scratch)
-          if grep -qi "alamofire" build/scratch/build/logs/scratch-resolve.log; then
+          echo 'import Kotlinspect' > "$SCRATCH/Sources/Scratch/Scratch.swift"
+          export KOTLINSPECT_LOCAL_XCFRAMEWORK=KotlinspectCore.xcframework
+          (cd "$SCRATCH" && "$ROOT/$STEP" scratch-resolve xcodebuild -resolvePackageDependencies -scheme Scratch \
+            -clonedSourcePackagesDirPath "$SCRATCH/packages")
+          CHECKOUTS=$(ls "$SCRATCH/packages/checkouts" | tr '\n' ' ')
+          echo "::notice title=Scratch checkouts::$CHECKOUTS"
+          if echo "$CHECKOUTS" | grep -qi alamofire; then
             echo "::error::Alamofire was fetched for a Kotlinspect-only app"; exit 1
           fi
           echo "::notice title=Scratch app::resolved without Alamofire"
