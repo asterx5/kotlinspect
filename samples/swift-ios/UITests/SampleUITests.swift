@@ -20,13 +20,16 @@ final class SampleUITests: XCTestCase {
 
     private var bubble: XCUIElement { app.descendants(matching: .any)["kotlinspect.bubble"] }
 
+    /// The sample's diagnostics line, added to failure messages.
+    private var diag: String { app.staticTexts["diag"].exists ? app.staticTexts["diag"].label : "no diag" }
+
     func testBubbleAppearsWithoutAnyStartCall() {
-        XCTAssertTrue(bubble.waitForExistence(timeout: 10), "the package started itself")
+        XCTAssertTrue(bubble.waitForExistence(timeout: 10), "the package started itself ((diag))")
         snapshot("1 bubble")
     }
 
     func testRequestsShowInTheInspector() {
-        XCTAssertTrue(bubble.waitForExistence(timeout: 10))
+        XCTAssertTrue(bubble.waitForExistence(timeout: 10), "bubble ((diag))")
         let before = bubble.label
         app.buttons["GET JSON"].tap()
         app.buttons["Alamofire GET"].tap()
@@ -47,7 +50,7 @@ final class SampleUITests: XCTestCase {
     }
 
     func testHarExportWritesAFile() {
-        XCTAssertTrue(bubble.waitForExistence(timeout: 10))
+        XCTAssertTrue(bubble.waitForExistence(timeout: 10), "bubble ((diag))")
         app.buttons["GET JSON"].tap()
         sleep(3)
         let export = app.buttons["Export HAR"]

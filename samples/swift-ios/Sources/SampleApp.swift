@@ -23,6 +23,9 @@ struct ContentView: View {
             List {
                 Section {
                     Text(status).font(.footnote.monospaced()).accessibilityIdentifier("status")
+                    // Read by the UI tests to explain a failure.
+                    Text("enabled=\(Kotlinspect.isEnabled) session=\(Kotlinspect.activeSession.rawValue.prefix(8))")
+                        .font(.caption2.monospaced()).accessibilityIdentifier("diag")
                     if CommandLine.arguments.contains("-kotlinspect-report-db") {
                         Text(Self.databaseState()).accessibilityIdentifier("dbState")
                     }

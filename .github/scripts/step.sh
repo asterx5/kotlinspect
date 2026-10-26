@@ -11,11 +11,14 @@ set -o pipefail
 status=${PIPESTATUS[0]}
 if [ "$status" -ne 0 ]; then
   echo "::error title=$name failed::exit code $status"
-  # The most useful lines: compiler and test errors, then the tail of the log.
-  grep -E "^e: |error:|error -|FAILED|Failing tests|XCTAssert|failed \(|Exception|What went wrong|Caused by|\*\* .* FAILED \*\*" "$log" \
-    | grep -v "^warning" | head -40 | while IFS= read -r line; do
-      echo "::error title=$name::${line:0:900}"
-    done
+  # GitHub shows at most 10 error annotations per step: assertion and compiler errors first, then
+  # other failure lines, without Xcode's RegisterExecutionPolicyException noise.
+  {
+    grep -E "XCTAssert|XCTFail|: error:|^e: " "$log"
+    grep -E "error -|FAILED|What went wrong|Caused by|Exception" "$log"
+  } | grep -v -e "RegisterExecutionPolicyException" -e "^warning" | awk '!seen[$0]++' | head -9 | while IFS= read -r line; do
+    echo "::error title=$name::${line:0:900}"
+  done
   tail -15 "$log" | while IFS= read -r line; do
     echo "::warning title=$name (tail)::${line:0:900}"
   done
