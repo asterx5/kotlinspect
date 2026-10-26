@@ -168,3 +168,72 @@ version `1.0.0-SNAPSHOT` so local publishing never overwrites a released version
   floor holds for Android and desktop only. Owner decision: document it now (README, changelog,
   project state) and fix later, by building the iOS klibs with an older toolchain. `-Xklib-abi-version`
   alone is reported not to work (it changes the manifest but linking fails on older compilers).
+
+### Phase 4: Swift package
+
+- **Kotlin bridge** (`iosMain`, `KotlinspectSwiftBridge` exported as `KSBridge`, with `KSConfig`,
+  `KSCaptureHandle`, `KSCancellable`, `KSCallSummary`, `KSSession`, `KSInspector`), all
+  `@ExperimentalKotlinspectApi` and documented as "for the Swift package only". It only forwards
+  to existing internals. Release gating: `setHostBuildIsDebug` sets `Platform.hostBuildIsDebug`,
+  which iOS's `isDebugBuild` prefers over `Platform.isDebugBinary`; KMP apps never set it. Added
+  `makeInspector` so SwiftUI can embed the inspector.
+- **XCFramework:** `KotlinspectCore`, static, from kotlinspect-core with Kotlog exported, for the
+  two published iOS targets (no iosX64). Task `assembleKotlinspectCoreReleaseXCFramework`.
+  **Deviation:** the spec's "no Ktor inside" check assumed a separate Ktor module; kotlinspect-core
+  *is* the Ktor plugin's artifact (splitting it would break every existing app), so Ktor's client
+  core is linked in. CI fails only if a Ktor engine is inside, and prints the framework size.
+- **Package.swift** at the root: `KotlinspectCore` binary target (local path through
+  `KOTLINSPECT_LOCAL_XCFRAMEWORK`, else the release URL and checksum on the two marker lines),
+  `KotlinspectLoader` (Objective-C), `Kotlinspect`, `KotlinspectAlamofire` (Alamofire from 5.4.0),
+  `KotlinspectTests`. The old `KotlinspectSwiftUI` product and its Objective-C runtime glue are
+  removed (owner notifies users); the README shows KMP apps the SwiftUI wrapper through their own
+  framework.
+- **Swift API** as spec 4.6, with `@_implementationOnly import KotlinspectCore`. Adapter internals
+  shared by the URLProtocol and the Alamofire adapter (`KotlinspectCapture`, `KotlinspectBody`,
+  `kotlinspectHandled()`) are `@_spi(KotlinspectAdapters)`, so they are not part of the normal
+  public interface.
+- **Zero setup:** `KotlinspectLoader +load` (Debug only) registers `KotlinspectURLProtocol` and
+  swizzles `URLSessionConfiguration.default`/`.ephemeral` to put it first; it never calls Kotlin.
+  On `UIApplicationDidFinishLaunchingNotification` it calls `KotlinspectAutoStart.start()` found by
+  name. An earlier `Kotlinspect.start(_:)` wins.
+- **URLSession capture** as spec 4.9: the request is copied and marked handled, small bodies with
+  a known length are read and re-attached, larger streams are left alone ("stream"), and the copy
+  runs on one inner session (its configuration has Kotlinspect's protocol removed) whose serial
+  delegate queue routes events to the protocol instance. Client calls go back to the thread that
+  started loading. Redirects end the hop (the new request is a new record) and stop forwarding the
+  rest of that task. Challenges are forwarded with a sender wrapper. The record finishes with the
+  last transaction's metrics, or 0.3 s after completion without them (waiting off the queue).
+- **Alamofire:** `eventMonitor` (records from URLSession-level events, one record per task, so each
+  retry is its own), `requestInterceptor` (sets the handled marker) and `session(...)` composing
+  both with the app's.
+- **Deviation / core addition:** Alamofire delivers event-monitor callbacks asynchronously, so with
+  only the monitor installed the automatic URLSession capture can begin first, and the Phase 0
+  rule (the outer record must start first) would store the call twice. Core now also lets a late
+  **Alamofire** record take over a matching URLSession record that started at most 2 s earlier and
+  is still in flight (`adoptLateInner`; the inner capture becomes a shadow and its record is
+  deleted). Ktor/OkHttp keep the strict rule (Ktor always begins first). `LateOuterCaptureTest`
+  covers it.
+- **UI:** accessibility identifiers `kotlinspect.bubble`, `kotlinspect.toast`,
+  `kotlinspect.inspector` for UI tests, set through key-value coding (the Kotlin bindings don't
+  declare UIView's `UIAccessibilityIdentification` conformance, so a cast to it silently failed).
+- **Found by CI:** package tests run in a bare `xctest` process without `UIApplication`; the overlay
+  code now only reads `UIApplication.sharedApplication` inside an `.app` bundle (it is declared
+  non-null, and reading it elsewhere crashed). `gradlew` is now executable in git (the repo was
+  created on Windows). The interface check reads the generated `.swiftinterface` without
+  re-verifying it: the module and its main type are both named `Kotlinspect`, which textual
+  interfaces can't express (a Swift limitation; source builds are unaffected). CI failures are
+  reported as annotations by `.github/scripts/step.sh`, since Actions logs need a GitHub login.
+- **Sample:** `samples/swift-ios`, an XcodeGen project (generated in CI, not committed) with the
+  spec's screens and XCUITests for Debug (bubble without any start call, count, inspector lists
+  URLSession and Alamofire calls, HAR export) and Release (no bubble, no `kotlinspect.db`).
+- **Workflows:** `ios.yml` (on push: Kotlin tests on the simulator, XCFramework, framework
+  inspection, package tests, public interface grep with library evolution, sample UI tests in
+  Debug and Release, Alamofire-free resolution for Kotlinspect-only apps, Alamofire 5.4.0 floor,
+  artifacts). `release-ios.yml` (manual, gated on `confirm_device_tested`): builds and zips the
+  XCFramework, rewrites the two Package.swift lines, commits "Release <version>" to main, tags,
+  creates the release with the zip, notes and skill, then smoke-tests the tagged package and
+  marks the release a draft if it fails. From now on releases are cut with this workflow, so the
+  tag and the Swift package always match; pushing a tag by hand would create a release without
+  the XCFramework.
+- **Not covered:** the Kotlin ingestion tests run on the JVM only (their helpers are JVM test
+  code); CI runs the common Kotlin tests on the iOS simulator.
