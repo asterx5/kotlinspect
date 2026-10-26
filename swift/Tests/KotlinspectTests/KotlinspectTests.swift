@@ -194,7 +194,8 @@ final class KotlinspectTests: XCTestCase {
         _ = await session.request(url("/json?case=af-monitor")).serializingData().response
         _ = try await entries("case=af-monitor")
         try await Task.sleep(nanoseconds: 300_000_000)
-        XCTAssertEqual(try await entries("case=af-monitor").count, 1, "outer Alamofire record kept, inner URLSession one merged")
+        let recorded = try await entries("case=af-monitor").count
+        XCTAssertEqual(recorded, 1, "outer Alamofire record kept, inner URLSession one merged")
     }
 
     /// Alamofire's default configuration also gets the Kotlinspect protocol, which replays on the mock.
