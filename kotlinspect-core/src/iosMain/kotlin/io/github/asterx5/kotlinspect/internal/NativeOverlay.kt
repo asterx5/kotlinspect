@@ -28,7 +28,7 @@ import platform.UIKit.NSLayoutConstraint
 import platform.UIKit.NSTextAlignmentCenter
 import platform.UIKit.UIBezierPath
 import platform.UIKit.UIColor
-import platform.UIKit.UIAccessibilityIdentificationProtocol
+import platform.Foundation.setValue
 import platform.UIKit.accessibilityLabel
 import platform.UIKit.isAccessibilityElement
 import platform.UIKit.UIEvent
@@ -49,9 +49,13 @@ import platform.UIKit.UIWindowScene
 import kotlin.math.PI
 import kotlin.math.abs
 
-/** Sets the identifier UI tests find views by. UIView conforms at runtime; the bindings don't say so. */
+/**
+ * Sets the identifier UI tests find views by. The Kotlin bindings don't declare UIView's
+ * UIAccessibilityIdentification conformance (a cast to it returns null), so it goes through
+ * key-value coding, which UIView supports for this property.
+ */
 internal fun UIView.setTestIdentifier(id: String) {
-    (this as? UIAccessibilityIdentificationProtocol)?.setAccessibilityIdentifier(id)
+    setValue(id, forKey = "accessibilityIdentifier")
 }
 
 internal fun uiColor(argb: Long): UIColor = UIColor(
