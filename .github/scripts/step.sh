@@ -14,7 +14,7 @@ if [ "$status" -ne 0 ]; then
   # GitHub shows at most 10 error annotations per step: assertion and compiler errors first, then
   # other failure lines, without Xcode's RegisterExecutionPolicyException noise.
   {
-    grep -E "XCTAssert|XCTFail|: error:|^e: " "$log"
+    grep -E "XCTAssert|XCTFail|: error:|^e: |^ld: |Undefined symbols|referenced from|framework '|library '" "$log"
     grep -E "error -|FAILED|What went wrong|Caused by|Exception" "$log"
   } | grep -v -e "RegisterExecutionPolicyException" -e "^warning" | awk '!seen[$0]++' | head -9 | while IFS= read -r line; do
     echo "::error title=$name::${line:0:900}"
