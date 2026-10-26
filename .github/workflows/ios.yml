@@ -115,8 +115,10 @@ jobs:
 
       # Apps add the package by URL, so the scratch app does too: a throwaway git copy of this
       # commit with the built XCFramework committed at a relative path (a URL package cannot
-      # point outside itself). Nothing is published.
-      - name: Apps using only Kotlinspect never fetch Alamofire
+      # point outside itself). Nothing is published. Xcode checks out every dependency a package
+      # declares (Alamofire's sources are downloaded), but builds only the products an app uses:
+      # this step fails if a Kotlinspect-only app compiles or links any Alamofire code.
+      - name: Apps using only Kotlinspect never build Alamofire
         run: |
           set -e
           ROOT="$PWD"
@@ -141,14 +143,19 @@ jobs:
           EOF
           echo 'import Kotlinspect' > "$SCRATCH/Sources/Scratch/Scratch.swift"
           export KOTLINSPECT_LOCAL_XCFRAMEWORK=KotlinspectCore.xcframework
-          (cd "$SCRATCH" && "$ROOT/$STEP" scratch-resolve xcodebuild -resolvePackageDependencies -scheme Scratch \
+          (cd "$SCRATCH" && swift package resolve > /dev/null 2>&1 || true
+            echo "::notice title=swift package resolve checkouts::$(ls .build/checkouts 2>/dev/null | tr '\n' ' ')")
+          (cd "$SCRATCH" && "$ROOT/$STEP" scratch-build xcodebuild build -scheme Scratch \
+            -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath "$SCRATCH/dd" \
             -clonedSourcePackagesDirPath "$SCRATCH/packages")
-          CHECKOUTS=$(ls "$SCRATCH/packages/checkouts" | tr '\n' ' ')
-          echo "::notice title=Scratch checkouts::$CHECKOUTS"
-          if echo "$CHECKOUTS" | grep -qi alamofire; then
-            echo "::error::Alamofire was fetched for a Kotlinspect-only app"; exit 1
+          echo "::notice title=Xcode checkouts::$(ls "$SCRATCH/packages/checkouts" | tr '\n' ' ')"
+          find "$SCRATCH/dd/Build" -iname "*alamofire*" > "$SCRATCH/alamofire-products.txt"
+          if [ -s "$SCRATCH/alamofire-products.txt" ]; then
+            head -5 "$SCRATCH/alamofire-products.txt" | while IFS= read -r f; do echo "::error title=Alamofire built::$f"; done
+            exit 1
           fi
-          echo "::notice title=Scratch app::resolved without Alamofire"
+          find "$SCRATCH/dd/Build" -name "Kotlinspect.swiftmodule" | grep -q . || { echo "::error::Kotlinspect was not built"; exit 1; }
+          echo "::notice title=Scratch app::built with Kotlinspect and without any Alamofire code"
 
       - name: Alamofire floor (5.4.0)
         run: |

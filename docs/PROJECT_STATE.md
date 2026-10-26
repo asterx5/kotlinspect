@@ -470,18 +470,20 @@ verified on the GitHub-login Central account.
 - The native iOS screens checked feature by feature (Logs menus, log detail, copy actions); they
   run in the owner's app but nobody has gone through them systematically.
 - Calling `Kotlog` from Swift (`Kotlog.shared.d(tag:message:layer:)`) with `kotlog` exported.
-- The `KotlinspectSwiftUI` package (never compiled). It relies on the selectors
-  `shared`, `makeOverlayViewSessionId:`, `openInspectorSessionId:`.
+- The Swift package (`vnext`) on a real iPhone: CI runs it only on simulators.
 - An iOS app on Kotlin 2.1.x consuming the klibs (Android/JVM floors are verified).
 
 **Limitations:**
 - iOS apps need Kotlin 2.4+: the iOS klibs are built by Kotlin 2.4.20 (`abi_version=2.4.0`), which
   older Kotlin/Native compilers cannot read. The 2.1.20 floor applies to Android and desktop.
-- Ktor only. Retrofit/OkHttp-only Android apps capture nothing yet.
+- Released versions (beta12) capture Ktor only. `vnext` adds OkHttp/Retrofit (Android, desktop)
+  and URLSession/Alamofire (Swift package).
+- The Swift package's simulator slice is arm64 only (no Intel Mac simulators).
 - Swift needs the app framework to `export` `kotlinspect-core` (and `kotlog` to call `Kotlog`).
 - Native iOS log filter menus close after each pick (keeping them open needs iOS 16).
 - Native iOS UI needs iOS 14.
-- No CI: tests, ABI checks and the binary-compatibility scans run only locally, by hand.
+- CI covers iOS and Swift only (`ios.yml`); JVM tests, ABI checks and the binary-compatibility
+  scans still run locally, by hand.
 - Maven Central file limit: about 2–3 releases a month (section 10).
 
 **Gotchas met during development:**
@@ -521,20 +523,28 @@ verified on the GitHub-login Central account.
 
 Suggested order:
 
+0. **Release `vnext` (November 2026, after the Maven Central file limit resets):** check the
+   Swift sample on a real iPhone, open an exported HAR in Chrome DevTools, try the desktop save
+   dialog; replace `1.0.0-SNAPSHOT` (`gradle.properties`, `libs.versions.toml`) and the changelog's
+   "Unreleased" heading with the version; merge `vnext` into `main`;
+   run `release-ios.yml` (it tags, so do not push the tag by hand); publish to Maven Central.
 1. **Verify on iPhone** what the owner's Compose app does not exercise: a SwiftUI/UIKit app on `kotlinspect-core`, the Swift package, `Kotlog` from Swift, and a pass through the native screens.
 2. **iOS for older Kotlin:** build the iOS klibs with a toolchain older Kotlin/Native can read
    (for example a separate build on KGP 2.2), so the 2.1.20 floor also holds on iOS.
 3. **CI workflow:** run `jvmTest` and `checkKotlinAbi` on pushes; automate the two binary-compatibility
-   scans (iOS klib against current Compose klibs, desktop jar against the current Compose classpath);
-   link and smoke-run the iOS sample on a macOS runner, which would have caught beta08–beta10.
+   scans (iOS klib against current Compose klibs, desktop jar against the current Compose classpath).
+   The macOS workflow (`ios.yml`, `vnext`) already builds and UI-tests the Swift sample; a Compose
+   iOS sample smoke run there would have caught beta08–beta10.
 3. **Android-only reach:**
-   - OkHttp/Retrofit interceptor feeding the same store and UI.
+   - OkHttp/Retrofit interceptor: done on `vnext`.
    - `kotlinspect-no-op` artifact for `releaseImplementation`, so the code is not shipped in release APKs.
    - An Android-only test app.
-4. **v2 features** (hooks already exist): mocking and error injection (rule chain), HAR export/import
-   (timing fields), duplicate-call warnings and session diff (endpoint key + fingerprint),
+4. **v2 features** (hooks already exist): mocking and error injection (rule chain), HAR import
+   (export is done on `vnext`), duplicate-call warnings and session diff (endpoint key + fingerprint),
    WebSocket/GraphQL sources (record SPI).
-5. Out-of-scope items from the original v1 scope, still open: Android system notifications,
+5. **Web targets** (js, wasmJs, no-op): parked on `vnext-web`; they need Kotlin 2.4 in web apps
+   until the klibs are built with an older toolchain (same fix as item 2).
+6. Out-of-scope items from the original v1 scope, still open: Android system notifications,
    shake-to-open, a desktop viewer pulling sessions from devices.
 
 ---

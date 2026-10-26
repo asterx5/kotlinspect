@@ -263,7 +263,8 @@ hood it is the same engine KMP apps use (sessions, retention, redaction, HAR exp
 
 **Install:** Xcode > File > Add Package Dependencies > `https://github.com/asterx5/kotlinspect`,
 the same version as the Maven artifacts, product **Kotlinspect** (and **KotlinspectAlamofire** if
-you use Alamofire or Moya). Apps that only add Kotlinspect never download Alamofire.
+you use Alamofire or Moya). Apps that only add Kotlinspect never build or link Alamofire (Xcode
+still downloads its sources while resolving the package, as it does for every declared dependency).
 
 **Zero setup in Debug builds.** Nothing to call: the package starts itself when the app has
 finished launching, and records `URLSession.shared` and every session built from `.default` or

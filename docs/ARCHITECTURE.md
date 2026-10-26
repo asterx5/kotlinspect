@@ -228,12 +228,20 @@ version `1.0.0-SNAPSHOT` so local publishing never overwrites a released version
   URLSession and Alamofire calls, HAR export) and Release (no bubble, no `kotlinspect.db`).
 - **Workflows:** `ios.yml` (on push: Kotlin tests on the simulator, XCFramework, framework
   inspection, package tests, public interface grep with library evolution, sample UI tests in
-  Debug and Release, Alamofire-free resolution for Kotlinspect-only apps, Alamofire 5.4.0 floor,
+  Debug and Release, no Alamofire code built for Kotlinspect-only apps, Alamofire 5.4.0 floor,
   artifacts). `release-ios.yml` (manual, gated on `confirm_device_tested`): builds and zips the
   XCFramework, rewrites the two Package.swift lines, commits "Release <version>" to main, tags,
   creates the release with the zip, notes and skill, then smoke-tests the tagged package and
   marks the release a draft if it fails. From now on releases are cut with this workflow, so the
   tag and the Swift package always match; pushing a tag by hand would create a release without
   the XCFramework.
+- **Deviation (Alamofire download):** the spec assumed SwiftPM resolves per product, so
+  Kotlinspect-only apps would never download Alamofire. CI showed that Xcode checks out every
+  dependency a package declares, also for URL dependencies (scratch app against a `file://` git
+  copy of the package). It builds only the products used, so the scratch check now fails if a
+  Kotlinspect-only app compiles or links any Alamofire code, and the README says the sources
+  are still downloaded. Avoiding the download entirely needs the adapter in its own repository
+  (for example `kotlinspect-alamofire`); owner's call before the first release, since moving the
+  product later would break apps that use it.
 - **Not covered:** the Kotlin ingestion tests run on the JVM only (their helpers are JVM test
   code); CI runs the common Kotlin tests on the iOS simulator.
