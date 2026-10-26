@@ -101,7 +101,14 @@ jobs:
       - name: Sample UI test (Release)
         run: |
           # Start clean: the Debug run's database must not count as one the Release build made.
-          xcrun simctl uninstall "${{ steps.sim.outputs.udid }}" io.github.asterx5.kotlinspect.sample || true
+          # simctl only uninstalls on a booted simulator.
+          xcrun simctl boot "${{ steps.sim.outputs.udid }}" 2>/dev/null || true
+          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b > /dev/null
+          xcrun simctl uninstall "${{ steps.sim.outputs.udid }}" io.github.asterx5.kotlinspect.sample
+          if xcrun simctl get_app_container "${{ steps.sim.outputs.udid }}" io.github.asterx5.kotlinspect.sample data 2>/dev/null; then
+            echo "::error::The Debug sample is still installed"; exit 1
+          fi
+          echo "::notice title=Release check::the Debug sample and its data were removed"
           $STEP sample-release xcodebuild test -project samples/swift-ios/KotlinspectSample.xcodeproj -scheme KotlinspectSample \
             -configuration Release -destination "id=${{ steps.sim.outputs.udid }}" -only-testing:KotlinspectSampleUITests/ReleaseTests \
             -resultBundlePath build/results/sample-release.xcresult ONLY_ACTIVE_ARCH=YES
