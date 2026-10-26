@@ -92,6 +92,9 @@ jobs:
 
       - name: Sample UI tests (Debug)
         run: |
+          # A simulator booting during the first app launch can time out XCUITest's launch.
+          xcrun simctl boot "${{ steps.sim.outputs.udid }}" 2>/dev/null || true
+          xcrun simctl bootstatus "${{ steps.sim.outputs.udid }}" -b > /dev/null
           $STEP sample-debug xcodebuild test -project samples/swift-ios/KotlinspectSample.xcodeproj -scheme KotlinspectSample \
             -configuration Debug -destination "id=${{ steps.sim.outputs.udid }}" -skip-testing:KotlinspectSampleUITests/ReleaseTests \
             -resultBundlePath build/results/sample-debug.xcresult
