@@ -96,11 +96,13 @@ jobs:
             -configuration Debug -destination "id=${{ steps.sim.outputs.udid }}" -skip-testing:KotlinspectSampleUITests/ReleaseTests \
             -resultBundlePath build/results/sample-debug.xcresult
 
+      # Release builds every simulator architecture by default; the XCFramework's simulator slice
+      # is arm64 only (iosX64 is not a published target), so build the active one.
       - name: Sample UI test (Release)
         run: |
           $STEP sample-release xcodebuild test -project samples/swift-ios/KotlinspectSample.xcodeproj -scheme KotlinspectSample \
             -configuration Release -destination "id=${{ steps.sim.outputs.udid }}" -only-testing:KotlinspectSampleUITests/ReleaseTests \
-            -resultBundlePath build/results/sample-release.xcresult
+            -resultBundlePath build/results/sample-release.xcresult ONLY_ACTIVE_ARCH=YES
 
       - name: Apps using only Kotlinspect never fetch Alamofire
         run: |

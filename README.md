@@ -332,6 +332,10 @@ Alamofire adapter, which observes without re-issuing. Not captured: background s
 WebSocket and stream tasks, `file:` and `data:` URLs, and sessions whose configuration was built
 without `.default` or `.ephemeral`.
 
+**Simulators:** the package runs on Apple Silicon simulators and on devices. Intel (x86_64)
+simulators are not supported; a Release build for the simulator needs `ONLY_ACTIVE_ARCH = YES`
+(Debug builds already use it).
+
 **Kotlin Multiplatform apps must not add this package.** They already get Kotlinspect through
 Gradle; the package would add a second Kotlin runtime and a second Kotlinspect. See the next
 section for SwiftUI and UIKit in KMP apps.
