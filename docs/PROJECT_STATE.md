@@ -45,7 +45,7 @@ the app uses Compose, with zero setup and zero risk in release builds.
 | OkHttp interceptor and event listener (Android, desktop) | Done, tested on OkHttp 4.9.3, 4.12.1, 5.5.1; Retrofit sample checked on the Android emulator |
 | HAR export (Compose, UIKit, API) | Done, tested (golden file); Android share checked on the emulator |
 | Web (js, wasmJs) targets | **Skipped** for now (would need Kotlin 2.4 for web apps); parked on `vnext-web` |
-| Swift package for pure iOS apps (`Kotlinspect`, `KotlinspectAlamofire`) | Done. Verified by the macOS CI workflow (`ios.yml`): package tests, interface check, sample UI tests in Debug; **not yet run on a real iPhone** |
+| Swift package for pure iOS apps (`Kotlinspect`, `KotlinspectAlamofire`) | Done. Verified by the macOS CI workflow (`ios.yml`): Kotlin tests on the simulator, package tests, interface check, sample UI tests in Debug and Release (inert, no database), Kotlinspect-only apps build no Alamofire code (its sources are still downloaded; see ARCHITECTURE), Alamofire 5.4.0 floor. Green on 2026-10-26; **not yet run on a real iPhone** |
 | Old `KotlinspectSwiftUI` package | Removed on `vnext` |
 | Minimum-version dependency floors | Done, verified with an old-toolchain Android app |
 | Publishing to Maven Central | Working (manual). Free tier limit of about 1,000 files a month (see section 10) |
